@@ -1,0 +1,174 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background-color: hsl(231 35% 7%);
+  color: hsl(210 40% 98%);
+}
+
+.font-display {
+  font-family: 'Outfit', sans-serif;
+  letter-spacing: -0.02em;
+}
+
+.font-mono {
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.label-caps {
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: hsl(215 20.2% 65.1%);
+}
+
+@layer base {
+  :root {
+    --background: 0 0% 98%;
+    --foreground: 231 35% 7%;
+    --card: 0 0% 100%;
+    --card-foreground: 231 35% 7%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 231 35% 7%;
+    --primary: 231 35% 7%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 231 35% 7%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16.3% 46.9%;
+    --accent: 186 100% 35%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 231 35% 7%;
+    --radius: 0.5rem;
+    --chart-1: 186 100% 45%;
+    --chart-2: 76 100% 45%;
+    --chart-3: 231 35% 40%;
+    --chart-4: 25 90% 55%;
+    --chart-5: 340 80% 55%;
+  }
+
+  .dark {
+    --background: 231 35% 7%;
+    --foreground: 210 40% 98%;
+    --card: 231 31% 12%;
+    --card-foreground: 210 40% 98%;
+    --popover: 231 31% 12%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 186 100% 50%;
+    --primary-foreground: 231 35% 7%;
+    --secondary: 231 20% 18%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 231 20% 18%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 76 100% 54%;
+    --accent-foreground: 231 35% 7%;
+    --destructive: 0 62.8% 45%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 231 20% 18%;
+    --input: 231 20% 18%;
+    --ring: 186 100% 50%;
+    --chart-1: 186 100% 50%;
+    --chart-2: 76 100% 54%;
+    --chart-3: 210 40% 70%;
+    --chart-4: 25 90% 60%;
+    --chart-5: 340 80% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5 {
+    font-family: 'Outfit', sans-serif;
+    letter-spacing: -0.02em;
+  }
+}
+
+/* Grain overlay */
+.grain::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+
+/* Selection */
+::selection {
+  background: hsl(76 100% 54%);
+  color: hsl(231 35% 7%);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(231 35% 7%);
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(231 20% 22%);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(231 20% 30%);
+}
+
+/* Score ring animation */
+@keyframes ringDraw {
+  from {
+    stroke-dashoffset: 283;
+  }
+}
+
+.score-ring circle.progress {
+  animation: ringDraw 1.2s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+
+/* Fade-in stagger */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-up {
+  animation: fadeUp 0.5s ease-out both;
+}
