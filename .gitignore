@@ -43,6 +43,7 @@ tmp/
 temp/
 memory/
 backend/memory/
+test-backend/
 
 # IDE & OS Artifacts
 .vscode/

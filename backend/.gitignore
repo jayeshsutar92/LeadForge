@@ -1,0 +1,26 @@
+# Environment & Secrets
+.env
+.env.*
+*.env
+!.env.example
+!.env*.example
+!.env.template
+
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+
+# Virtual environments
+.venv
+.venv*/
+venv/
+
+templates.txt
