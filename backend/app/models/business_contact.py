@@ -17,7 +17,7 @@ class BusinessContact(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         Index("ix_business_contacts_slug", "slug", unique=True),
     )
 
-    business_id: Mapped[str] = mapped_column(ForeignKey("businesses.id"), nullable=False)
+    business_id: Mapped[str] = mapped_column(ForeignKey("businesses.id", ondelete="CASCADE"), nullable=False, index=True)
     slug: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     title: Mapped[str | None] = mapped_column(String(255), nullable=True)

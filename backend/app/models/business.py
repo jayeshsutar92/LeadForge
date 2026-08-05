@@ -32,3 +32,11 @@ class Business(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
     has_online_orders: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     posts_last_30: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    # Relationship to contacts
+    from sqlalchemy.orm import relationship
+    contacts: Mapped[list["BusinessContact"]] = relationship(
+        "BusinessContact",
+        back_populates="business",
+        cascade="all, delete-orphan",
+    )

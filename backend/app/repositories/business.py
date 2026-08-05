@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import Select, asc, desc, func, or_, select
+from sqlalchemy import Select, asc, desc, func, or_, select, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.business import Business
@@ -22,6 +22,7 @@ class BusinessRepository:
         self,
         *,
         limit: int = 60,
+        offset: int = 0,
         q: str | None = None,
         category: str | None = None,
         city: str | None = None,
@@ -36,7 +37,7 @@ class BusinessRepository:
             website_status=website_status,
             min_followers=min_followers,
         )
-        statement = statement.limit(limit)
+        statement = statement.offset(offset).limit(limit)
         items_result = await self.session.execute(statement)
         return list(items_result.scalars().all())
         
@@ -88,3 +89,23 @@ class BusinessRepository:
             statement = statement.where(Business.followers >= min_followers)
             
         return statement
+
+    async def create(self, business: Business) -> Business:
+        self.session.add(business)
+        await self.session.commit()
+        await self.session.refresh(business)
+        return business
+
+    async def update(self, business_id: UUID, **kwargs) -> Business | None:
+        await self.session.execute(
+            update(Business)
+            .where(Business.id == business_id)
+            .values(**kwargs)
+        )
+        await self.session.commit()
+        return await self.get_by_id(business_id)
+
+    async def delete(self, business_id: UUID) -> int:
+        result = await self.session.execute(delete(Business).where(Business.id == business_id))
+        await self.session.commit()
+        return result.rowcount

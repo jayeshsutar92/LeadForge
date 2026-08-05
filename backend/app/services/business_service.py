@@ -9,6 +9,7 @@ from app.models.search_history import SearchHistory
 from app.repositories.business import BusinessRepository
 from app.repositories.search_history import SearchHistoryRepository
 from app.schemas.business import BusinessCard
+from app.schemas.business_create_update import BusinessCreate, BusinessUpdate
 from app.services.scoring import compute_opportunity_score, score_tier
 
 
@@ -53,6 +54,7 @@ class BusinessService:
         min_score: int = 0,
         sort: str = "score_desc",
         limit: int = 60,
+        offset: int = 0,
         user_id: Optional[str] = None,
     ) -> tuple[int, list[BusinessCard]]:
         businesses = await self.business_repo.list(
@@ -62,6 +64,7 @@ class BusinessService:
             website_status=website_status,
             min_followers=min_followers,
             limit=limit,
+            offset=offset,
         )
         
         cards = [self._to_card(b) for b in businesses]
@@ -93,3 +96,30 @@ class BusinessService:
             await self.search_history_repo.create(history)
 
         return len(cards), cards
+
+    async def create_business(self, data: BusinessCreate) -> BusinessCard:
+        # Convert schema to model
+        business = Business(**data.dict())
+        created = await self.business_repo.create(business)
+        return self._to_card(created)
+
+    async def update_business(self, slug: str, data: BusinessUpdate) -> BusinessCard:
+        # Fetch existing business
+        existing = await self.business_repo.get_by_slug(slug)
+        if not existing:
+            from fastapi import HTTPException, status
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Business not found")
+        # Prepare update fields, exclude None values
+        update_data = {k: v for k, v in data.dict().items() if v is not None}
+        if not update_data:
+            return self._to_card(existing)
+        await self.business_repo.update(existing.id, **update_data)
+        updated = await self.business_repo.get_by_id(existing.id)
+        return self._to_card(updated)
+
+    async def delete_business(self, slug: str) -> None:
+        existing = await self.business_repo.get_by_slug(slug)
+        if not existing:
+            from fastapi import HTTPException, status
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Business not found")
+        await self.business_repo.delete(existing.id)

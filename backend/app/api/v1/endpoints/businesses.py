@@ -7,6 +7,7 @@ from app.api.deps import get_current_user
 from app.db.session import get_db_session
 from app.models.user import User
 from app.schemas.business import BusinessCard, BusinessDetail, BusinessListResponse
+from app.schemas.business_create_update import BusinessCreate, BusinessUpdate
 from app.services.business_service import BusinessService
 from app.services.scoring import compute_opportunity_score, get_recommendation
 
@@ -165,3 +166,34 @@ async def get_proposal(
         "score": rec["score"],
         "rationale": rec["rationale"],
     }
+
+# CRUD endpoints for Business
+
+@router.post("/", response_model=BusinessCard)
+async def create_business(
+    payload: BusinessCreate,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+):
+    service = BusinessService(session)
+    return await service.create_business(payload)
+
+@router.put("/{slug}", response_model=BusinessCard)
+async def update_business(
+    slug: str,
+    payload: BusinessUpdate,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+):
+    service = BusinessService(session)
+    return await service.update_business(slug, payload)
+
+@router.delete("/{slug}", status_code=204)
+async def delete_business(
+    slug: str,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+):
+    service = BusinessService(session)
+    await service.delete_business(slug)
+    return
