@@ -1,0 +1,33 @@
+from __future__ import annotations
+
+from sqlalchemy import ForeignKey, String, Text, Boolean, Integer, Float, Index
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.db.base_class import Base
+from app.models.mixins import TimestampMixin, UUIDPrimaryKeyMixin
+
+
+class BusinessContact(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """Contact information associated with a Business.
+    Each contact belongs to exactly one Business.
+    """
+
+    __tablename__ = "business_contacts"
+    __table_args__ = (
+        Index("ix_business_contacts_slug", "slug", unique=True),
+    )
+
+    business_id: Mapped[str] = mapped_column(ForeignKey("businesses.id"), nullable=False)
+    slug: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    title: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # relationship back to Business
+    business: Mapped["Business"] = relationship(
+        "Business",
+        back_populates="contacts",
+        lazy="joined",
+    )
