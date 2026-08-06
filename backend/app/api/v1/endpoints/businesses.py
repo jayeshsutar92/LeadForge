@@ -6,10 +6,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user
 from app.db.session import get_db_session
 from app.models.user import User
-from app.schemas.business import BusinessCard, BusinessDetail, BusinessListResponse
+from app.schemas.business import BusinessCard, BusinessDetail, BusinessListResponse, ProposalResponse
 from app.schemas.business_create_update import BusinessCreate, BusinessUpdate
 from app.services.business_service import BusinessService
+from app.services.proposal_service import ProposalService
 from app.services.scoring import compute_opportunity_score, get_recommendation
+from app.repositories.opportunity import OpportunityRepository
 
 router = APIRouter()
 
@@ -120,7 +122,7 @@ async def get_business(
     )
 
 
-@router.get("/{slug}/proposal")
+@router.get("/{slug}/proposal", response_model=ProposalResponse)
 async def get_proposal(
     slug: str,
     user: User = Depends(get_current_user),
@@ -130,42 +132,17 @@ async def get_proposal(
     b = await service.business_repo.get_by_slug(slug)
     if not b:
         raise HTTPException(status_code=404, detail="Business not found")
-        
-    b_dict = {
-        "name": b.name,
-        "category": b.category,
-        "city": b.city,
-        "country": b.country,
-        "followers": b.followers,
-        "engagement_rate": b.engagement_rate,
-        "website": b.website,
-        "instagram": b.instagram,
-        "facebook": b.facebook,
-        "cover_image": b.cover_image,
-        "bio": b.bio,
-    }
-    rec = get_recommendation(b_dict)
-    
-    return {
-        "prepared_for": b.name,
-        "prepared_by": user.full_name or user.email,
-        "date": datetime.now(timezone.utc).strftime("%B %d, %Y"),
-        "summary": (
-            f"{b.name} has built a strong presence on Instagram with "
-            f"{b.followers:,} followers, yet lacks a dedicated website "
-            f"to convert this audience into direct customers. A tailored "
-            f"'{rec['theme']}' web experience will unlock owned traffic, "
-            f"bookings, and long-term brand equity."
-        ),
-        "deliverables": rec["suggested_sections"],
-        "timeline_weeks": 4 if rec["price_range"]["max"] < 4000 else 6,
-        "price_range": rec["price_range"],
-        "theme": rec["theme"],
-        "palette": rec["palette"],
-        "tier": rec["tier"],
-        "score": rec["score"],
-        "rationale": rec["rationale"],
-    }
+
+    # Retrieve the latest opportunity for this business
+    opp_repo = OpportunityRepository(session)
+    opportunity = await opp_repo.get_latest_by_business_intelligence(str(b.id))
+    if not opportunity:
+        raise HTTPException(status_code=404, detail="Opportunity not found")
+
+    proposal_service = ProposalService(session)
+    proposal = await proposal_service.get_or_create_proposal(opportunity.id, opportunity.data)
+    return proposal
+
 
 # CRUD endpoints for Business
 

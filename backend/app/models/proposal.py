@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from sqlalchemy import JSON, String, ForeignKey, Index
 from sqlalchemy.orm import Mapped, mapped_column
@@ -19,6 +19,6 @@ class Proposal(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         nullable=False,
         index=True,
     )
-    version: Mapped[int] = mapped_column(String, nullable=False, default='1')
+    version: Mapped[int] = mapped_column(nullable=False, default=1)
     # Store the generated proposal content (title, sections, pricing, timeline, etc.)
     content: Mapped[dict] = mapped_column(JSON, nullable=False)
