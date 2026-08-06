@@ -46,7 +46,8 @@ class AuthService:
             return None
         return user
 
-    async def refresh(self, refresh_token: str) -> TokenPair:
+    async def refresh(self, refresh_token: str) -> str:
+        """Validate a refresh token and return a new access token."""
         payload = self.decode_expected_token(refresh_token, TokenType.REFRESH)
         user = await self.get_user_from_token_payload(payload)
         token_version = int(payload.get("token_version", -1))
@@ -57,7 +58,7 @@ class AuthService:
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-        return self.create_token_pair(user)
+        return self.create_access_token(user.id, user.email)
 
     async def logout(self, user: User) -> None:
         user.refresh_token_version += 1

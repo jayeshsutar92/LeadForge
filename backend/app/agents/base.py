@@ -5,21 +5,21 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict
 
 from app.agents.context import SharedContext
-from app.agents.llm_provider import LLMProvider
 
 
 class BaseAgent(ABC):
     """Abstract base class for all agents.
 
-    Agents receive a shared context, can use an LLM provider, and must implement
-    an asynchronous `run` method that returns a result dictionary.
+    Agents receive a shared context and must implement an asynchronous ``run``
+    method that returns a result dictionary.  An optional ``llm_provider``
+    (any object) can be injected for future AI integrations.
     """
 
     def __init__(
         self,
         name: str,
         context: SharedContext | None = None,
-        llm_provider: LLMProvider | None = None,
+        llm_provider: Any | None = None,
         logger: logging.Logger | None = None,
     ) -> None:
         self.name = name

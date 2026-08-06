@@ -21,12 +21,12 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     debug: bool = Field(default=False, validation_alias="APP_DEBUG")
     database_url: str = Field(
-        default="postgresql+asyncpg://postgres:password@localhost:5432/careeros",
+        default="postgresql+asyncpg://postgres:password@localhost:5432/leadforge",
         validation_alias="DATABASE_URL",
     )
     sql_echo: bool = Field(default=False, validation_alias="SQL_ECHO")
     redis_url: str = Field(default="redis://localhost:6379/0", validation_alias="REDIS_URL")
-    redis_key_prefix: str = Field(default="careeros", validation_alias="REDIS_KEY_PREFIX")
+    redis_key_prefix: str = Field(default="leadforge", validation_alias="REDIS_KEY_PREFIX")
     cache_default_ttl_seconds: int = Field(
         default=300,
         validation_alias="CACHE_DEFAULT_TTL_SECONDS",
