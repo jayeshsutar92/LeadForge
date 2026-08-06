@@ -20,6 +20,7 @@ def get_redis_client() -> Redis:
             decode_responses=True,
             socket_connect_timeout=5,
             socket_timeout=5,
+            max_connections=100,
         )
     return _redis_client
 
