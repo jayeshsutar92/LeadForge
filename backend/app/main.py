@@ -11,6 +11,7 @@ from app.core.config import Settings, get_settings
 from app.core.exceptions import register_exception_handlers
 from app.core.logging import configure_logging
 from app.core.redis import close_redis_client, ping_redis
+from app.middleware.logging import RequestLoggingMiddleware
 
 logger = logging.getLogger(__name__)
 
@@ -52,21 +53,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_headers=["*"],
     )
 
-    @app.middleware("http")
-    async def request_logging_middleware(request: Request, call_next):
-        start_time = time.perf_counter()
-        response = await call_next(request)
-        duration_ms = round((time.perf_counter() - start_time) * 1000, 2)
-        logger.info(
-            "HTTP request completed",
-            extra={
-                "method": request.method,
-                "path": request.url.path,
-                "status_code": response.status_code,
-                "duration_ms": duration_ms,
-            },
-        )
-        return response
+    app.add_middleware(RequestLoggingMiddleware)
 
     @app.get("/api")
     async def api_root() -> dict[str, str]:
