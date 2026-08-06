@@ -279,11 +279,12 @@ async def get_latest_proposal(
 async def generate_proposal(
     slug: str,
     opportunity_id: UUID,
+    template_type: str = Query("standard", description="Template to use (standard, premium, quick_win)"),
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
 ):
     service = ProposalService(session)
-    proposal = await service.generate_proposal(opportunity_id)
+    proposal = await service.generate_proposal(opportunity_id, template_type=template_type)
     
     return ProposalResponse.model_validate({
         "id": str(proposal.id),
@@ -326,6 +327,19 @@ async def delete_proposal(
     service = ProposalService(session)
     await service.delete_proposal(proposal_id)
     return
+
+
+@router.get("/{slug}/proposal/{proposal_id}/export")
+async def export_proposal(
+    slug: str,
+    proposal_id: UUID,
+    format: str = Query("markdown", description="Format to export (markdown, json)"),
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+):
+    service = ProposalService(session)
+    exported = await service.export_proposal(proposal_id, format=format)
+    return {"format": format, "data": exported}
 
 
 # ─── Outreach ─────────────────────────────────────────────────────────────────

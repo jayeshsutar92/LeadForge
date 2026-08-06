@@ -49,12 +49,19 @@ class ProposalService:
         payload = json.dumps({"id": str(proposal.id)})
         await self.redis.set(key, payload, ex=_PROPOSAL_CACHE_TTL)
 
-    def _generate_content_from_opp(self, opp_data: dict) -> dict:
-        """Deterministically map opportunity recommendations to proposal structure."""
+    def _generate_content_from_opp(self, opp_data: dict, template_type: str = "standard") -> dict:
+        """Deterministically map opportunity recommendations to proposal structure using a template."""
         recs = opp_data.get("recommendations", {})
         
+        title = "Digital Presence Optimization Proposal"
+        if template_type == "premium":
+            title = "Comprehensive Digital Transformation Proposal"
+        elif template_type == "quick_win":
+            title = "High-Impact Digital Improvements Proposal"
+            
         return {
-            "title": "Digital Presence Optimization Proposal",
+            "template": template_type,
+            "title": title,
             "executive_summary": "Based on our analysis, we have identified key areas for improvement.",
             "design_theme": recs.get("theme", "Modern"),
             "color_palette": recs.get("palette", []),
@@ -63,7 +70,7 @@ class ProposalService:
             "timeline": recs.get("estimated_timeline", "TBD"),
         }
 
-    async def generate_proposal(self, opportunity_id: UUID) -> Proposal:
+    async def generate_proposal(self, opportunity_id: UUID, template_type: str = "standard") -> Proposal:
         opp = await self.opp_repo.get_by_id(opportunity_id)
         if not opp:
             raise HTTPException(status_code=404, detail="Opportunity not found")
@@ -71,7 +78,7 @@ class ProposalService:
         latest = await self.repo.get_latest_by_opportunity(opportunity_id)
         version = latest.version + 1 if latest else 1
         
-        content = self._generate_content_from_opp(opp.data)
+        content = self._generate_content_from_opp(opp.data, template_type)
         
         proposal = await self.repo.create(opportunity_id, version, content)
         
@@ -111,6 +118,28 @@ class ProposalService:
             await self._set_cache(key, latest)
         else:
             await self.redis.delete(key)
+
+    async def export_proposal(self, proposal_id: UUID, format: str = "markdown") -> str:
+        proposal = await self.repo.get_by_id(proposal_id)
+        if not proposal:
+            raise HTTPException(status_code=404, detail="Proposal not found")
+            
+        c = proposal.content
+        if format == "markdown":
+            sections = "\n".join([f"- {s}" for s in c.get("proposed_sections", [])])
+            md = f"# {c.get('title', 'Proposal')}\n\n"
+            md += f"## Executive Summary\n{c.get('executive_summary', '')}\n\n"
+            md += f"## Design Direction\n- **Theme**: {c.get('design_theme', '')}\n"
+            md += f"- **Palette**: {', '.join(c.get('color_palette', []))}\n\n"
+            md += f"## Proposed Strategy\n{sections}\n\n"
+            md += f"## Investment & Timeline\n- **Investment**: {c.get('investment', '')}\n"
+            md += f"- **Timeline**: {c.get('timeline', '')}\n"
+            return md
+            
+        elif format == "json":
+            return json.dumps(c, indent=2)
+            
+        raise HTTPException(status_code=400, detail="Unsupported export format")
 
     async def generate_outreach(self, opportunity_id: UUID, business_slug: str, contact_name: str = "") -> dict:
         business = await self.business_repo.get_by_slug(business_slug)
