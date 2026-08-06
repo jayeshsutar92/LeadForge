@@ -1,6 +1,7 @@
 import axios from "axios";
 
-const BASE = process.env.REACT_APP_BACKEND_URL;
+// Use VITE_BACKEND_URL if set, otherwise use relative path so Vite's proxy works in dev
+const BASE = import.meta.env.VITE_BACKEND_URL || "";
 
 export const api = axios.create({
     baseURL: BASE,
@@ -16,6 +17,21 @@ api.interceptors.request.use((config) => {
     }
     return config;
 });
+
+// handle 401 unauthorized errors globally
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response?.status === 401) {
+            localStorage.removeItem("access_token");
+            // If not already on login/register, redirect
+            if (!window.location.pathname.match(/^\/(login|register)/)) {
+                window.location.href = "/login";
+            }
+        }
+        return Promise.reject(error);
+    }
+);
 
 export function formatApiError(detail) {
     if (detail == null) return "Something went wrong.";
