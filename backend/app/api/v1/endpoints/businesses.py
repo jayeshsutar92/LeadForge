@@ -17,9 +17,11 @@ from app.schemas.proposal import ProposalResponse
 from app.services.business_contact_service import BusinessContactService
 from app.services.business_intelligence_service import BusinessIntelligenceService
 from app.services.business_service import BusinessService
+from app.services.opportunity_service import OpportunityService
 from app.services.proposal_service import ProposalService
 from app.services.scoring import compute_opportunity_score, get_recommendation
 from app.schemas.business_intelligence import BusinessIntelligenceListResponse, BusinessIntelligenceResult
+from app.schemas.opportunity import OpportunityResponse
 
 router = APIRouter()
 
@@ -198,6 +200,53 @@ async def trigger_analysis(
         "business_id": str(result.business_id),
         "analysis_type": result.analysis_type,
         "created_at": result.created_at.isoformat(),
+        "data": result.data,
+    })
+
+
+# ─── Opportunity Engine ───────────────────────────────────────────────────────
+
+@router.get("/{slug}/intelligence/{bi_id}/opportunity", response_model=OpportunityResponse)
+async def get_opportunity(
+    slug: str,
+    bi_id: UUID,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+):
+    biz_service = BusinessService(session)
+    b = await biz_service.business_repo.get_by_slug(slug)
+    if not b:
+        raise HTTPException(status_code=404, detail="Business not found")
+        
+    service = OpportunityService(session)
+    result = await service.get_latest(bi_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="No opportunity data found")
+        
+    return OpportunityResponse.model_validate({
+        "id": str(result.id),
+        "business_intelligence_id": str(result.business_intelligence_id),
+        "created_at": result.created_at,
+        "updated_at": result.updated_at,
+        "data": result.data,
+    })
+
+
+@router.post("/{slug}/intelligence/{bi_id}/opportunity/generate", response_model=OpportunityResponse)
+async def generate_opportunity(
+    slug: str,
+    bi_id: UUID,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+):
+    service = OpportunityService(session)
+    result = await service.generate_opportunity(bi_id, slug)
+    
+    return OpportunityResponse.model_validate({
+        "id": str(result.id),
+        "business_intelligence_id": str(result.business_intelligence_id),
+        "created_at": result.created_at,
+        "updated_at": result.updated_at,
         "data": result.data,
     })
 
