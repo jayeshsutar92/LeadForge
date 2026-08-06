@@ -1,5 +1,7 @@
-from pydantic import BaseModel, Field
 from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict, Field
+
 
 class BusinessContactBase(BaseModel):
     slug: str = Field(..., max_length=255)
@@ -9,8 +11,11 @@ class BusinessContactBase(BaseModel):
     phone: str | None = None
     notes: str | None = None
 
+
 class BusinessContactCreate(BusinessContactBase):
-    business_id: UUID
+    """Create payload — business_id is inferred from the URL path."""
+    pass
+
 
 class BusinessContactUpdate(BaseModel):
     slug: str | None = None
@@ -20,9 +25,9 @@ class BusinessContactUpdate(BaseModel):
     phone: str | None = None
     notes: str | None = None
 
+
 class BusinessContactOut(BusinessContactBase):
     id: UUID
     business_id: UUID
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
