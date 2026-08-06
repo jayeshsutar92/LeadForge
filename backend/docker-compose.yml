@@ -12,7 +12,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -24,7 +24,7 @@ services:
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -37,7 +37,7 @@ services:
       - "8000:8000"
     environment:
       - APP_ENV=production
-      - DATABASE_URL=postgresql+asyncpg://postgres:password@db:5432/leadforge
+      - DATABASE_URL=postgresql+asyncpg://postgres:Abc123%24%2545@db:5432/leadforge
       - REDIS_URL=redis://redis:6379/0
       - SECRET_KEY=generate-a-secure-secret-key-in-production
       - ALLOWED_ORIGINS=http://localhost:3000,https://yourdomain.com
