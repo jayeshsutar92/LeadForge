@@ -15,9 +15,11 @@ from app.schemas.business_contact import BusinessContactCreate, BusinessContactO
 from app.schemas.business_create_update import BusinessCreate, BusinessUpdate
 from app.schemas.proposal import ProposalResponse
 from app.services.business_contact_service import BusinessContactService
+from app.services.business_intelligence_service import BusinessIntelligenceService
 from app.services.business_service import BusinessService
 from app.services.proposal_service import ProposalService
 from app.services.scoring import compute_opportunity_score, get_recommendation
+from app.schemas.business_intelligence import BusinessIntelligenceListResponse, BusinessIntelligenceResult
 
 router = APIRouter()
 
@@ -129,6 +131,75 @@ async def get_business(
         },
         recommendation=get_recommendation(b_dict),
     )
+
+
+# ─── Business Intelligence ────────────────────────────────────────────────────
+
+@router.get("/{slug}/intelligence", response_model=BusinessIntelligenceListResponse)
+async def list_intelligence(
+    slug: str,
+    limit: int = Query(10, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+):
+    service = BusinessIntelligenceService(session)
+    history = await service.list_history(slug, limit=limit, offset=offset)
+    total = await service.count_history(slug)
+    
+    results = []
+    for h in history:
+        results.append({
+            "id": str(h.id),
+            "business_id": str(h.business_id),
+            "analysis_type": h.analysis_type,
+            "created_at": h.created_at.isoformat(),
+            "data": h.data,
+        })
+    return BusinessIntelligenceListResponse(total=total, results=results)
+
+
+@router.get("/{slug}/intelligence/latest", response_model=BusinessIntelligenceResult)
+async def get_latest_intelligence(
+    slug: str,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+):
+    biz_service = BusinessService(session)
+    b = await biz_service.business_repo.get_by_slug(slug)
+    if not b:
+        raise HTTPException(status_code=404, detail="Business not found")
+        
+    service = BusinessIntelligenceService(session)
+    result = await service.get_latest(b.id)
+    if not result:
+        raise HTTPException(status_code=404, detail="No intelligence data found")
+        
+    return BusinessIntelligenceResult.model_validate({
+        "id": str(result.id),
+        "business_id": str(result.business_id),
+        "analysis_type": result.analysis_type,
+        "created_at": result.created_at.isoformat(),
+        "data": result.data,
+    })
+
+
+@router.post("/{slug}/intelligence/analyze", response_model=BusinessIntelligenceResult)
+async def trigger_analysis(
+    slug: str,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+):
+    service = BusinessIntelligenceService(session)
+    result = await service.trigger_analysis(slug)
+    
+    return BusinessIntelligenceResult.model_validate({
+        "id": str(result.id),
+        "business_id": str(result.business_id),
+        "analysis_type": result.analysis_type,
+        "created_at": result.created_at.isoformat(),
+        "data": result.data,
+    })
 
 
 # ─── Proposal ─────────────────────────────────────────────────────────────────
