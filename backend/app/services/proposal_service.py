@@ -1,85 +1,124 @@
-from __future__ import annotations
-
 import json
 from uuid import UUID
 
+from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.redis import build_redis_key, get_redis_client
 from app.models.proposal import Proposal
+from app.repositories.opportunity import OpportunityRepository
 from app.repositories.proposal import ProposalRepository
-from app.services.scoring import get_recommendation
+from app.services.analysis.outreach_generator import generate_outreach
+from app.repositories.business import BusinessRepository
 
 _PROPOSAL_CACHE_TTL = 3600  # 1 hour
 
 
 class ProposalService:
-    """Service for handling proposals.
-
-    Provides retrieval and creation of proposals tied to an opportunity.
-    Uses Redis for caching the latest proposal JSON representation.
-    """
-
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
         self.repo = ProposalRepository(session)
+        self.opp_repo = OpportunityRepository(session)
+        self.business_repo = BusinessRepository(session)
         self.redis = get_redis_client()
 
     def _cache_key(self, opportunity_id: str) -> str:
         return build_redis_key("proposal", opportunity_id)
 
-    async def get_latest(self, opportunity_id: str) -> Proposal | None:
-        """Return latest proposal for an opportunity, checking Redis cache first."""
-        key = self._cache_key(opportunity_id)
+    async def get_latest(self, opportunity_id: UUID) -> Proposal | None:
+        key = self._cache_key(str(opportunity_id))
         cached = await self.redis.get(key)
+        
         if cached:
             try:
                 data = json.loads(cached)
-                # If we have a cached proposal_id, fetch by ID for freshness
-                proposal_id = data.get("proposal_id")
+                proposal_id = data.get("id")
                 if proposal_id:
                     proposal = await self.repo.get_by_id(UUID(proposal_id))
                     if proposal:
                         return proposal
             except (json.JSONDecodeError, ValueError):
                 pass
-
+                
         proposal = await self.repo.get_latest_by_opportunity(opportunity_id)
         if proposal:
             await self._set_cache(key, proposal)
         return proposal
 
     async def _set_cache(self, key: str, proposal: Proposal) -> None:
-        """Cache the proposal identifier in Redis."""
-        payload = json.dumps({"proposal_id": str(proposal.id)})
+        payload = json.dumps({"id": str(proposal.id)})
         await self.redis.set(key, payload, ex=_PROPOSAL_CACHE_TTL)
 
-    async def generate_content(self, opportunity_data: dict) -> dict:
-        """Generate proposal content using the recommendation engine."""
-        return get_recommendation(opportunity_data)
+    def _generate_content_from_opp(self, opp_data: dict) -> dict:
+        """Deterministically map opportunity recommendations to proposal structure."""
+        recs = opp_data.get("recommendations", {})
+        
+        return {
+            "title": "Digital Presence Optimization Proposal",
+            "executive_summary": "Based on our analysis, we have identified key areas for improvement.",
+            "design_theme": recs.get("theme", "Modern"),
+            "color_palette": recs.get("palette", []),
+            "proposed_sections": recs.get("suggested_sections", []),
+            "investment": recs.get("price_range", "Custom Pricing"),
+            "timeline": recs.get("estimated_timeline", "TBD"),
+        }
 
-    async def get_or_create_proposal(self, opportunity_id: str, opportunity_data: dict) -> Proposal:
-        """Return existing latest proposal or create a new one.
-
-        Versioning: if a proposal already exists, returns it unchanged.
-        If none exists, creates version 1 with generated content.
-        """
-        existing = await self.repo.get_latest_by_opportunity(opportunity_id)
-        if existing:
-            return existing
-
-        content = await self.generate_content(opportunity_data)
-        proposal = await self.repo.create(
-            opportunity_id=opportunity_id, version=1, content=content
-        )
-        key = self._cache_key(opportunity_id)
+    async def generate_proposal(self, opportunity_id: UUID) -> Proposal:
+        opp = await self.opp_repo.get_by_id(opportunity_id)
+        if not opp:
+            raise HTTPException(status_code=404, detail="Opportunity not found")
+            
+        latest = await self.repo.get_latest_by_opportunity(opportunity_id)
+        version = latest.version + 1 if latest else 1
+        
+        content = self._generate_content_from_opp(opp.data)
+        
+        proposal = await self.repo.create(opportunity_id, version, content)
+        
+        key = self._cache_key(str(opportunity_id))
         await self._set_cache(key, proposal)
+        
         return proposal
 
-    async def get_by_id(self, proposal_id: UUID) -> Proposal | None:
-        return await self.repo.get_by_id(proposal_id)
+    async def update_proposal(self, proposal_id: UUID, content: dict) -> Proposal:
+        proposal = await self.repo.get_by_id(proposal_id)
+        if not proposal:
+            raise HTTPException(status_code=404, detail="Proposal not found")
+            
+        # Create a new version
+        new_version = proposal.version + 1
+        updated_proposal = await self.repo.create(proposal.opportunity_id, new_version, content)
+        
+        key = self._cache_key(str(proposal.opportunity_id))
+        await self._set_cache(key, updated_proposal)
+        
+        return updated_proposal
 
-    async def invalidate_cache(self, opportunity_id: str) -> None:
-        """Remove cached proposal entry for the given opportunity."""
-        key = self._cache_key(opportunity_id)
-        await self.redis.delete(key)
+    async def list_history(self, opportunity_id: UUID, limit: int = 10, offset: int = 0) -> list[Proposal]:
+        return await self.repo.list_by_opportunity(opportunity_id, limit=limit, offset=offset)
+
+    async def delete_proposal(self, proposal_id: UUID) -> None:
+        proposal = await self.repo.get_by_id(proposal_id)
+        if not proposal:
+            raise HTTPException(status_code=404, detail="Proposal not found")
+            
+        await self.repo.delete(proposal_id)
+        
+        # Invalidate cache if we deleted the latest
+        key = self._cache_key(str(proposal.opportunity_id))
+        latest = await self.repo.get_latest_by_opportunity(proposal.opportunity_id)
+        if latest:
+            await self._set_cache(key, latest)
+        else:
+            await self.redis.delete(key)
+
+    async def generate_outreach(self, opportunity_id: UUID, business_slug: str, contact_name: str = "") -> dict:
+        business = await self.business_repo.get_by_slug(business_slug)
+        if not business:
+            raise HTTPException(status_code=404, detail="Business not found")
+            
+        opp = await self.opp_repo.get_by_id(opportunity_id)
+        if not opp:
+            raise HTTPException(status_code=404, detail="Opportunity not found")
+            
+        return generate_outreach(business.name, opp.data, contact_name)
