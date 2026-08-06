@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from sqlalchemy import JSON, String, ForeignKey, Index
+import uuid
+
+from sqlalchemy import JSON, ForeignKey, Index
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base_class import Base
@@ -13,11 +16,11 @@ class BusinessIntelligence(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         Index("ix_business_intelligence_business_id_created", "business_id", "created_at"),
     )
 
-    business_id: Mapped[str] = mapped_column(
-        String(36),
+    business_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
         ForeignKey("businesses.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
-    analysis_type: Mapped[str] = mapped_column(String(50), nullable=False, default="deterministic")
+    analysis_type: Mapped[str] = mapped_column(nullable=False, default="deterministic", server_default="deterministic")
     data: Mapped[dict] = mapped_column(JSON, nullable=False)

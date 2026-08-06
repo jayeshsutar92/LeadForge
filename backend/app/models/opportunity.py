@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from sqlalchemy import JSON, String, ForeignKey, Index
+import uuid
+
+from sqlalchemy import JSON, ForeignKey, Index
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base_class import Base
@@ -13,8 +16,8 @@ class Opportunity(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         Index("ix_opportunity_business_intelligence_id_created", "business_intelligence_id", "created_at"),
     )
 
-    business_intelligence_id: Mapped[str] = mapped_column(
-        String(36),
+    business_intelligence_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
         ForeignKey("business_intelligence.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
