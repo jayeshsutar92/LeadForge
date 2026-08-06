@@ -1,11 +1,10 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 Environment = Literal["development", "production", "test"]
-
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -13,6 +12,13 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore",
     )
+
+    @model_validator(mode="after")
+    def validate_secrets_in_production(self) -> "Settings":
+        if self.app_env == "production":
+            if self.jwt_secret_key == "change-me-in-production":
+                raise ValueError("JWT_SECRET_KEY must be changed in production")
+        return self
 
     project_name: str = "LeadForge API"
     app_env: Environment = Field(default="development", validation_alias="APP_ENV")

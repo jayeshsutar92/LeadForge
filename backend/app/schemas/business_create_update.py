@@ -1,6 +1,6 @@
-from typing import Optional
+from typing import Optional, Any
 
-from pydantic import BaseModel, ConfigDict, Field, validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class BusinessCreate(BaseModel):
@@ -18,8 +18,9 @@ class BusinessCreate(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-    @validator("cover_image", pre=True, always=True)
-    def default_cover_image(cls, v):
+    @field_validator("cover_image", mode="before")
+    @classmethod
+    def default_cover_image(cls, v: Any) -> str:
         return v or ""
 
 

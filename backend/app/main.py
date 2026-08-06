@@ -12,6 +12,18 @@ from app.core.exceptions import register_exception_handlers
 from app.core.logging import configure_logging
 from app.core.redis import close_redis_client, ping_redis
 from app.middleware.logging import RequestLoggingMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response: Response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        return response
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +65,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_headers=["*"],
     )
 
+    app.add_middleware(SecurityHeadersMiddleware)
+    app.add_middleware(
+        TrustedHostMiddleware, 
+        allowed_hosts=["*"] if not settings.is_production else ["localhost", "127.0.0.1", "leadforge.com"]
+    )
     app.add_middleware(RequestLoggingMiddleware)
 
     @app.get("/api")
