@@ -1,10 +1,11 @@
-from app.models.business import Business
-from app.models.business_contact import BusinessContact
-from app.models.business_intelligence import BusinessIntelligence
-from app.models.opportunity import Opportunity
-from app.models.proposal import Proposal
-from app.models.search_history import SearchHistory
-from app.models.user import User
+from .business import Business
+from .business_contact import BusinessContact
+from .business_intelligence import BusinessIntelligence
+from .opportunity import Opportunity
+from .proposal import Proposal
+from .search_history import SearchHistory
+from .user import User
+from .lead import Lead, Activity
 
 __all__ = [
     "Business",
@@ -14,4 +15,6 @@ __all__ = [
     "Proposal",
     "SearchHistory",
     "User",
+    "Lead",
+    "Activity",
 ]
