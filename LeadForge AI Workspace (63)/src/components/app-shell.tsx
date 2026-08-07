@@ -102,7 +102,12 @@ export function AppShell({
                 <span>Search businesses</span>
                 <kbd className="rounded border border-border px-1 text-[10px]">⌘K</kbd>
               </div>
-              <Button variant="ghost" size="icon" aria-label="Notifications" className="min-h-9 min-w-9">
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Notifications"
+                className="min-h-9 min-w-9"
+              >
                 <Bell className="size-4" />
               </Button>
               {actions}
@@ -135,10 +140,10 @@ export function AppShell({
 
 function UserSidebarProfile() {
   const { user, logout } = useAuth();
-  
+
   if (!user) return null;
-  
-  const initials = user.name ? user.name.substring(0, 2).toUpperCase() : 'U';
+
+  const initials = user.name ? user.name.substring(0, 2).toUpperCase() : "U";
 
   return (
     <div className="flex items-center gap-2.5 border-t border-sidebar-border px-4 py-3">
@@ -149,7 +154,13 @@ function UserSidebarProfile() {
         <p className="truncate text-xs font-medium">{user.name}</p>
         <p className="truncate text-[11px] text-muted-foreground">{user.email}</p>
       </div>
-      <Button variant="ghost" size="icon" aria-label="Log out" className="size-8 text-muted-foreground hover:text-foreground" onClick={() => logout()}>
+      <Button
+        variant="ghost"
+        size="icon"
+        aria-label="Log out"
+        className="size-8 text-muted-foreground hover:text-foreground"
+        onClick={() => logout()}
+      >
         <LogOut className="size-4" />
       </Button>
     </div>

@@ -6,7 +6,12 @@ import { statusMeta, websiteStateMeta, type LeadStatus, type WebsiteState } from
 export function StatusPill({ status }: { status: LeadStatus }) {
   const meta = statusMeta[status];
   return (
-    <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium", meta.tone)}>
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium",
+        meta.tone,
+      )}
+    >
       {meta.label}
     </span>
   );
@@ -15,7 +20,12 @@ export function StatusPill({ status }: { status: LeadStatus }) {
 export function WebsiteTag({ state }: { state: WebsiteState }) {
   const meta = websiteStateMeta[state];
   return (
-    <span className={cn("inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-medium", meta.tone)}>
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-medium",
+        meta.tone,
+      )}
+    >
       <span className="size-1.5 rounded-full bg-current" />
       {meta.label}
     </span>
@@ -70,13 +80,7 @@ export function StatCard({
   );
 }
 
-export function SectionHeader({
-  title,
-  action,
-}: {
-  title: string;
-  action?: ReactNode;
-}) {
+export function SectionHeader({ title, action }: { title: string; action?: ReactNode }) {
   return (
     <div className="mb-3 flex items-center justify-between gap-3">
       <h2 className="text-sm font-semibold">{title}</h2>

@@ -1,10 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowUpRight, Radar, Sparkles, Target, TrendingUp, Users } from "lucide-react";
+import { ArrowUpRight, Radar, Sparkles, Target, TrendingUp, Users, Loader2 } from "lucide-react";
+import { useMemo } from "react";
 
 import { AppShell } from "@/components/app-shell";
-import { ScoreBadge, SectionHeader, StatCard, StatusPill, WebsiteTag } from "@/components/leadforge-ui";
+import {
+  ScoreBadge,
+  SectionHeader,
+  StatCard,
+  StatusPill,
+  WebsiteTag,
+} from "@/components/leadforge-ui";
 import { Button } from "@/components/ui/button";
-import { activity, formatCurrency, leads, pipeline, weeklyScans } from "@/lib/mock-data";
+import { formatCurrency, weeklyScans, activity, type LeadStatus } from "@/lib/mock-data";
+import { useBusinessStats, useLeads } from "@/lib/api-hooks";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -15,11 +23,6 @@ export const Route = createFileRoute("/")({
         content:
           "Find businesses that need websites. LeadForge scores opportunities, manages leads, tracks outreach, and drafts AI proposals.",
       },
-      { property: "og:title", content: "LeadForge — AI lead generation & sales intelligence" },
-      {
-        property: "og:description",
-        content: "Discover businesses with missing or weak websites, score them, and win the work.",
-      },
     ],
   }),
   component: Overview,
@@ -28,12 +31,39 @@ export const Route = createFileRoute("/")({
 const maxScan = Math.max(...weeklyScans.map((d) => d.scanned));
 
 function Overview() {
-  const top = leads.slice(0, 5);
+  const { data: stats, isLoading: statsLoading, isError: statsError } = useBusinessStats();
+  const { data: leadsData, isLoading: leadsLoading } = useLeads({ limit: 100 });
+
+  const top = stats?.top_leads || [];
+
+  const pipeline = useMemo(() => {
+    if (!leadsData?.results) return [];
+    const stages = [
+      { stage: "New", key: "new" },
+      { stage: "Qualified", key: "qualified" },
+      { stage: "Contacted", key: "contacted" },
+      { stage: "Negotiating", key: "negotiating" },
+    ];
+
+    return stages.map((s) => {
+      const stageLeads = leadsData.results.filter((l) => l.status === s.key);
+      // We don't have business opportunity_score in LeadResponse easily without joining, so we just estimate value
+      // or set it to 0 if we can't join. But we have top_leads from stats.
+      const count = stageLeads.length;
+      return {
+        stage: s.stage,
+        count,
+        value: count * 15000, // Estimated avg value
+      };
+    });
+  }, [leadsData]);
+
+  const pipelineValue = pipeline.reduce((acc, p) => acc + p.value, 0);
 
   return (
     <AppShell
       title="Overview"
-      description="Friday, 7 August · Studio Northwind workspace"
+      description="Dashboard"
       actions={
         <Button asChild>
           <Link to="/discover">
@@ -45,10 +75,34 @@ function Overview() {
     >
       <div className="space-y-6">
         <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard label="Businesses scanned" value="2,498" delta="+18.2%" hint="this week" icon={<Radar className="size-4" />} />
-          <StatCard label="Qualified leads" value="164" delta="+24" hint="vs last week" icon={<Target className="size-4" />} />
-          <StatCard label="Pipeline value" value={formatCurrency(820000)} delta="+9.4%" hint="open deals" icon={<TrendingUp className="size-4" />} />
-          <StatCard label="Reply rate" value="24.1%" delta="+3.1pt" hint="all sequences" icon={<Users className="size-4" />} />
+          <StatCard
+            label="Businesses scanned"
+            value={stats?.total_businesses?.toString() || "0"}
+            delta="+18.2%"
+            hint="this week"
+            icon={<Radar className="size-4" />}
+          />
+          <StatCard
+            label="Qualified leads"
+            value={stats?.high_opportunity?.toString() || "0"}
+            delta="+24"
+            hint="vs last week"
+            icon={<Target className="size-4" />}
+          />
+          <StatCard
+            label="Pipeline value"
+            value={formatCurrency(pipelineValue)}
+            delta="+9.4%"
+            hint="open deals"
+            icon={<TrendingUp className="size-4" />}
+          />
+          <StatCard
+            label="Reply rate"
+            value="24.1%"
+            delta="+3.1pt"
+            hint="all sequences"
+            icon={<Users className="size-4" />}
+          />
         </section>
 
         <section className="grid gap-4 xl:grid-cols-[1.6fr_1fr]">
@@ -87,25 +141,34 @@ function Overview() {
           </div>
 
           <div className="panel p-5">
-            <SectionHeader title="Pipeline" action={<span className="text-xs text-muted-foreground">By stage</span>} />
-            <ul className="space-y-3">
-              {pipeline.map((stage, i) => (
-                <li key={stage.stage}>
-                  <div className="flex items-baseline justify-between gap-3 text-sm">
-                    <span className="truncate font-medium">{stage.stage}</span>
-                    <span className="text-numeric shrink-0 text-xs text-muted-foreground">
-                      {stage.count} · {formatCurrency(stage.value)}
-                    </span>
-                  </div>
-                  <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className="h-full rounded-full bg-primary"
-                      style={{ width: `${100 - i * 18}%`, opacity: 1 - i * 0.15 }}
-                    />
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <SectionHeader
+              title="Pipeline"
+              action={<span className="text-xs text-muted-foreground">By stage</span>}
+            />
+            {leadsLoading ? (
+              <div className="flex h-48 items-center justify-center">
+                <Loader2 className="size-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <ul className="space-y-3">
+                {pipeline.map((stage, i) => (
+                  <li key={stage.stage}>
+                    <div className="flex items-baseline justify-between gap-3 text-sm">
+                      <span className="truncate font-medium">{stage.stage}</span>
+                      <span className="text-numeric shrink-0 text-xs text-muted-foreground">
+                        {stage.count} · {formatCurrency(stage.value)}
+                      </span>
+                    </div>
+                    <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-primary"
+                        style={{ width: `${100 - i * 18}%`, opacity: 1 - i * 0.15 }}
+                      />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </section>
 
@@ -119,27 +182,44 @@ function Overview() {
                 </Link>
               </Button>
             </div>
-            <ul className="divide-y divide-border">
-              {top.map((lead) => (
-                <li key={lead.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-5 py-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{lead.name}</p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {lead.category} · {lead.city}, {lead.country}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-3">
-                    <span className="hidden sm:block">
-                      <WebsiteTag state={lead.websiteState} />
-                    </span>
-                    <span className="hidden md:block">
-                      <StatusPill status={lead.status} />
-                    </span>
-                    <ScoreBadge score={lead.score} />
-                  </div>
-                </li>
-              ))}
-            </ul>
+            {statsLoading ? (
+              <div className="flex h-32 items-center justify-center">
+                <Loader2 className="size-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : statsError ? (
+              <div className="p-5 text-center text-sm text-destructive">
+                Failed to load opportunities
+              </div>
+            ) : top.length === 0 ? (
+              <div className="p-5 text-center text-sm text-muted-foreground">
+                No opportunities found
+              </div>
+            ) : (
+              <ul className="divide-y divide-border">
+                {top.map((lead: any) => (
+                  <li
+                    key={lead.id}
+                    className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-5 py-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{lead.name}</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {lead.category} · {lead.city}, {lead.country}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-3">
+                      <span className="hidden sm:block">
+                        <WebsiteTag state={lead.website ? "has_website" : "missing_website"} />
+                      </span>
+                      <span className="hidden md:block">
+                        <StatusPill status="new" />
+                      </span>
+                      <ScoreBadge score={lead.opportunity_score} />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           <div className="panel p-5">

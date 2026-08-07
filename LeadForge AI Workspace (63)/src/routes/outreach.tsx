@@ -10,19 +10,49 @@ export const Route = createFileRoute("/outreach")({
   head: () => ({
     meta: [
       { title: "Outreach — LeadForge" },
-      { name: "description", content: "Track sequences, replies, and follow-ups across every lead you contact." },
+      {
+        name: "description",
+        content: "Track sequences, replies, and follow-ups across every lead you contact.",
+      },
       { property: "og:title", content: "Outreach — LeadForge" },
-      { property: "og:description", content: "Track sequences, replies, and follow-ups across every lead you contact." },
+      {
+        property: "og:description",
+        content: "Track sequences, replies, and follow-ups across every lead you contact.",
+      },
     ],
   }),
   component: Outreach,
 });
 
 const inbox = [
-  { id: 1, from: "Harborline Logistics", preview: "Interesting — can you send pricing for the quote portal?", time: "2h", unread: true },
-  { id: 2, from: "Aperture Legal Partners", preview: "We reviewed the audit. Let's schedule a call Thursday.", time: "5h", unread: true },
-  { id: 3, from: "Cedar & Co. Roasters", preview: "Not right now, revisit us in Q4 please.", time: "1d", unread: false },
-  { id: 4, from: "Vantage Roofing Group", preview: "Who handles this internally? Forwarding to our ops lead.", time: "2d", unread: false },
+  {
+    id: 1,
+    from: "Harborline Logistics",
+    preview: "Interesting — can you send pricing for the quote portal?",
+    time: "2h",
+    unread: true,
+  },
+  {
+    id: 2,
+    from: "Aperture Legal Partners",
+    preview: "We reviewed the audit. Let's schedule a call Thursday.",
+    time: "5h",
+    unread: true,
+  },
+  {
+    id: 3,
+    from: "Cedar & Co. Roasters",
+    preview: "Not right now, revisit us in Q4 please.",
+    time: "1d",
+    unread: false,
+  },
+  {
+    id: 4,
+    from: "Vantage Roofing Group",
+    preview: "Who handles this internally? Forwarding to our ops lead.",
+    time: "2d",
+    unread: false,
+  },
 ];
 
 function Outreach() {
@@ -39,10 +69,21 @@ function Outreach() {
     >
       <div className="space-y-6">
         <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard label="Emails sent" value="1,942" delta="+312" hint="this week" icon={<Mail className="size-4" />} />
+          <StatCard
+            label="Emails sent"
+            value="1,942"
+            delta="+312"
+            hint="this week"
+            icon={<Mail className="size-4" />}
+          />
           <StatCard label="Open rate" value="58.4%" delta="+1.8pt" />
           <StatCard label="Reply rate" value="24.1%" delta="+3.1pt" />
-          <StatCard label="Meetings booked" value="17" delta="+5" icon={<MessageSquare className="size-4" />} />
+          <StatCard
+            label="Meetings booked"
+            value="17"
+            delta="+5"
+            icon={<MessageSquare className="size-4" />}
+          />
         </section>
 
         <section className="grid gap-4 xl:grid-cols-[1.5fr_1fr]">
@@ -54,26 +95,48 @@ function Outreach() {
               <table className="w-full min-w-[620px] text-sm">
                 <thead>
                   <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                    <th scope="col" className="px-5 py-2.5 font-medium">Sequence</th>
-                    <th scope="col" className="px-5 py-2.5 font-medium">Channel</th>
-                    <th scope="col" className="px-5 py-2.5 text-right font-medium">Active</th>
-                    <th scope="col" className="px-5 py-2.5 text-right font-medium">Open</th>
-                    <th scope="col" className="px-5 py-2.5 text-right font-medium">Reply</th>
+                    <th scope="col" className="px-5 py-2.5 font-medium">
+                      Sequence
+                    </th>
+                    <th scope="col" className="px-5 py-2.5 font-medium">
+                      Channel
+                    </th>
+                    <th scope="col" className="px-5 py-2.5 text-right font-medium">
+                      Active
+                    </th>
+                    <th scope="col" className="px-5 py-2.5 text-right font-medium">
+                      Open
+                    </th>
+                    <th scope="col" className="px-5 py-2.5 text-right font-medium">
+                      Reply
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {sequences.map((s) => (
-                    <tr key={s.id} className="border-b border-border/70 last:border-0 hover:bg-accent/40">
+                    <tr
+                      key={s.id}
+                      className="border-b border-border/70 last:border-0 hover:bg-accent/40"
+                    >
                       <td className="px-5 py-3">
                         <p className="truncate font-medium">{s.name}</p>
                         <p className="text-[11px] text-muted-foreground">
-                          <span className={s.status === "Running" ? "text-primary" : "text-muted-foreground"}>●</span> {s.status}
+                          <span
+                            className={
+                              s.status === "Running" ? "text-primary" : "text-muted-foreground"
+                            }
+                          >
+                            ●
+                          </span>{" "}
+                          {s.status}
                         </p>
                       </td>
                       <td className="px-5 py-3 text-xs text-muted-foreground">{s.channel}</td>
                       <td className="text-numeric px-5 py-3 text-right text-xs">{s.active}</td>
                       <td className="text-numeric px-5 py-3 text-right text-xs">{s.openRate}%</td>
-                      <td className="text-numeric px-5 py-3 text-right text-xs font-semibold text-primary">{s.replyRate}%</td>
+                      <td className="text-numeric px-5 py-3 text-right text-xs font-semibold text-primary">
+                        {s.replyRate}%
+                      </td>
                     </tr>
                   ))}
                 </tbody>

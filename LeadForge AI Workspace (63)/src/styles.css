@@ -113,8 +113,11 @@
   --sidebar-border: oklch(1 0 0 / 8%);
 
   --shadow-panel: 0 20px 50px -24px oklch(0 0 0 / 70%);
-  --gradient-glow:
-    radial-gradient(120% 120% at 0% 0%, color-mix(in oklab, var(--primary) 16%, transparent), transparent 60%);
+  --gradient-glow: radial-gradient(
+    120% 120% at 0% 0%,
+    color-mix(in oklab, var(--primary) 16%, transparent),
+    transparent 60%
+  );
 }
 
 @layer base {

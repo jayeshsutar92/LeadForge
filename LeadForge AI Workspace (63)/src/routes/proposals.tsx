@@ -11,9 +11,16 @@ export const Route = createFileRoute("/proposals")({
   head: () => ({
     meta: [
       { title: "Proposals — LeadForge" },
-      { name: "description", content: "AI-drafted proposals tailored to each business opportunity, from draft to accepted." },
+      {
+        name: "description",
+        content:
+          "AI-drafted proposals tailored to each business opportunity, from draft to accepted.",
+      },
       { property: "og:title", content: "Proposals — LeadForge" },
-      { property: "og:description", content: "AI-drafted proposals tailored to each business opportunity." },
+      {
+        property: "og:description",
+        content: "AI-drafted proposals tailored to each business opportunity.",
+      },
     ],
   }),
   component: Proposals,
@@ -40,7 +47,13 @@ function Proposals() {
     >
       <div className="space-y-6">
         <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard label="Proposals sent" value="46" delta="+8" hint="this quarter" icon={<FileText className="size-4" />} />
+          <StatCard
+            label="Proposals sent"
+            value="46"
+            delta="+8"
+            hint="this quarter"
+            icon={<FileText className="size-4" />}
+          />
           <StatCard label="Acceptance rate" value="31%" delta="+4pt" />
           <StatCard label="Avg. deal size" value={formatCurrency(11200)} />
           <StatCard label="Avg. draft time" value="42s" hint="AI generated" />
@@ -48,7 +61,10 @@ function Proposals() {
 
         <section className="grid gap-3 md:grid-cols-2">
           {proposals.map((p) => (
-            <article key={p.id} className="panel flex flex-col p-5 transition-colors hover:border-border-strong">
+            <article
+              key={p.id}
+              className="panel flex flex-col p-5 transition-colors hover:border-border-strong"
+            >
               <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
                 <div className="min-w-0">
                   <p className="truncate text-xs text-muted-foreground">{p.lead}</p>
@@ -71,8 +87,12 @@ function Proposals() {
               <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
                 <p className="text-numeric text-lg font-semibold">{formatCurrency(p.value)}</p>
                 <div className="flex gap-2">
-                  <Button variant="ghost" size="sm">Preview</Button>
-                  <Button variant="outline" size="sm">Edit</Button>
+                  <Button variant="ghost" size="sm">
+                    Preview
+                  </Button>
+                  <Button variant="outline" size="sm">
+                    Edit
+                  </Button>
                 </div>
               </div>
             </article>

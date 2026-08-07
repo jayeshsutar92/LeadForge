@@ -1,35 +1,54 @@
-import { createFileRoute, Link } from '@tanstack/react-router';
-import { useState } from 'react';
-import { Sparkles } from 'lucide-react';
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
+import { Sparkles } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { toast } from "sonner";
 
-import { useAuth } from '@/lib/auth';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { useAuth } from "@/lib/auth";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
-export const Route = createFileRoute('/login')({
+export const Route = createFileRoute("/login")({
   component: LoginPage,
 });
 
+const loginSchema = z.object({
+  email: z.string().min(1, "Email is required").email("Invalid email address"),
+  password: z.string().min(1, "Password is required"),
+});
+
+type LoginFormValues = z.infer<typeof loginSchema>;
+
 function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
   const { login } = useAuth();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setIsLoading(true);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
+
+  const onSubmit = async (data: LoginFormValues) => {
+    setError("");
 
     try {
-      await login({ email, password });
+      await login(data);
+      toast.success("Successfully logged in");
       // Note: redirect is handled by __root.tsx AuthWrapper automatically on state change
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Invalid email or password');
-    } finally {
-      setIsLoading(false);
+      const errorMsg = err.response?.data?.detail || "Invalid email or password";
+      setError(errorMsg);
+      toast.error("Login failed", { description: errorMsg });
     }
   };
 
@@ -41,49 +60,65 @@ function LoginPage() {
             <Sparkles className="size-5" />
           </div>
           <h1 className="text-2xl font-semibold tracking-tight">Welcome back</h1>
-          <p className="text-sm text-muted-foreground">Enter your email to sign in to your account</p>
+          <p className="text-sm text-muted-foreground">
+            Enter your email to sign in to your account
+          </p>
         </div>
 
         <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             {error && (
               <div className="rounded-md bg-destructive/15 p-3 text-sm font-medium text-destructive text-center">
                 {error}
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className={errors.email ? "text-destructive" : ""}>
+                Email
+              </Label>
               <Input
                 id="email"
                 type="email"
                 placeholder="m@example.com"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={isLoading}
+                {...register("email")}
+                disabled={isSubmitting}
+                className={errors.email ? "border-destructive focus-visible:ring-destructive" : ""}
+                aria-invalid={!!errors.email}
               />
+              {errors.email && (
+                <p className="text-[11px] font-medium text-destructive">{errors.email.message}</p>
+              )}
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password" className={errors.password ? "text-destructive" : ""}>
+                  Password
+                </Label>
               </div>
               <Input
                 id="password"
                 type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={isLoading}
+                {...register("password")}
+                disabled={isSubmitting}
+                className={
+                  errors.password ? "border-destructive focus-visible:ring-destructive" : ""
+                }
+                aria-invalid={!!errors.password}
               />
+              {errors.password && (
+                <p className="text-[11px] font-medium text-destructive">
+                  {errors.password.message}
+                </p>
+              )}
             </div>
-            <Button className="w-full" type="submit" disabled={isLoading}>
-              {isLoading ? 'Signing in...' : 'Sign in'}
+            <Button className="w-full" type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Signing in..." : "Sign in"}
             </Button>
           </form>
         </div>
 
         <p className="text-center text-sm text-muted-foreground">
-          Don't have an account?{' '}
+          Don't have an account?{" "}
           <Link to="/register" className="font-medium text-primary hover:underline">
             Sign up
           </Link>

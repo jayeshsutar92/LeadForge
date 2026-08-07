@@ -8,6 +8,7 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
+import { Toaster } from "sonner";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -72,9 +73,9 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   );
 }
 
-export const Route = createRootRouteWithContext<{ 
+export const Route = createRootRouteWithContext<{
   queryClient: QueryClient;
-  auth: ReturnType<typeof import('../lib/auth').useAuth>;
+  auth: ReturnType<typeof import("../lib/auth").useAuth>;
 }>()({
   head: () => ({
     meta: [
@@ -118,6 +119,7 @@ function RootShell({ children }: { children: ReactNode }) {
       </head>
       <body>
         {children}
+        <Toaster position="top-center" richColors />
         <Scripts />
       </body>
     </html>
@@ -130,27 +132,29 @@ import { useRouterState } from "@tanstack/react-router";
 function AuthWrapper({ children }: { children: ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
-  const pathname = useRouterState({ select: s => s.location.pathname });
-  
-  const isPublicRoute = pathname === '/login' || pathname === '/register';
-  
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+
+  const isPublicRoute = pathname === "/login" || pathname === "/register";
+
   useEffect(() => {
     if (!isLoading) {
       if (!isAuthenticated && !isPublicRoute) {
-        router.navigate({ to: '/login', replace: true });
+        router.navigate({ to: "/login", replace: true });
       } else if (isAuthenticated && isPublicRoute) {
-        router.navigate({ to: '/', replace: true });
+        router.navigate({ to: "/", replace: true });
       }
     }
   }, [isLoading, isAuthenticated, isPublicRoute, router]);
 
   if (isLoading) {
-    return <div className="flex h-screen w-full items-center justify-center">Loading session...</div>;
+    return (
+      <div className="flex h-screen w-full items-center justify-center">Loading session...</div>
+    );
   }
-  
+
   if (!isAuthenticated && !isPublicRoute) return null;
   if (isAuthenticated && isPublicRoute) return null;
-  
+
   return <>{children}</>;
 }
 

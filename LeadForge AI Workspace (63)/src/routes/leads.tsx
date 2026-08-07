@@ -11,6 +11,7 @@ import {
   Sparkles,
   Star,
   X,
+  Loader2,
 } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
@@ -18,16 +19,18 @@ import { ScoreBadge, StatusPill, WebsiteTag } from "@/components/leadforge-ui";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { formatCurrency, leads, statusMeta, type LeadStatus } from "@/lib/mock-data";
+import { formatCurrency, statusMeta, type LeadStatus } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
+import { useLeads, useBusinesses, useLeadDetail, useBusinessDetail } from "@/lib/api-hooks";
 
 export const Route = createFileRoute("/leads")({
   head: () => ({
     meta: [
       { title: "Leads — LeadForge" },
-      { name: "description", content: "Filter, score, and work every business opportunity in one CRM table." },
-      { property: "og:title", content: "Leads — LeadForge" },
-      { property: "og:description", content: "Filter, score, and work every business opportunity in one CRM table." },
+      {
+        name: "description",
+        content: "Filter, score, and work every business opportunity in one CRM table.",
+      },
     ],
   }),
   component: LeadsPage,
@@ -45,26 +48,68 @@ const filters: Array<{ key: LeadStatus | "all"; label: string }> = [
 function LeadsPage() {
   const [filter, setFilter] = useState<LeadStatus | "all">("all");
   const [query, setQuery] = useState("");
-  const [selectedId, setSelectedId] = useState<string | null>(leads[0]?.id ?? null);
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
 
-  const rows = useMemo(
-    () =>
-      leads.filter(
-        (l) =>
-          (filter === "all" || l.status === filter) &&
-          (l.name.toLowerCase().includes(query.toLowerCase()) ||
-            l.category.toLowerCase().includes(query.toLowerCase()) ||
-            l.city.toLowerCase().includes(query.toLowerCase())),
-      ),
-    [filter, query],
+  const {
+    data: leadsData,
+    isLoading: leadsLoading,
+    isError: leadsError,
+  } = useLeads({ limit: 100 });
+  const { data: businessesData, isLoading: bizLoading } = useBusinesses({ limit: 100 });
+
+  const { data: selectedLeadDetail, isLoading: leadDetailLoading } = useLeadDetail(selectedLeadId);
+  const { data: selectedBizDetail, isLoading: bizDetailLoading } = useBusinessDetail(
+    businessesData?.results
+      .find((b) => b.id === selectedLeadDetail?.business_id)
+      ?.name.toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-") || null,
   );
 
-  const selected = leads.find((l) => l.id === selectedId) ?? null;
+  const rows = useMemo(() => {
+    if (!leadsData?.results || !businessesData?.results) return [];
+
+    return leadsData.results
+      .map((lead) => {
+        const biz = businessesData.results.find((b) => b.id === lead.business_id);
+        return {
+          ...lead,
+          business: biz || {
+            name: "Unknown",
+            category: "Unknown",
+            city: "Unknown",
+            website: "",
+            opportunity_score: 0,
+          },
+        };
+      })
+      .filter((l) => {
+        const matchesFilter = filter === "all" || l.status === filter;
+        const searchLower = query.toLowerCase();
+        const matchesQuery =
+          l.business.name.toLowerCase().includes(searchLower) ||
+          l.business.category.toLowerCase().includes(searchLower) ||
+          l.business.city.toLowerCase().includes(searchLower);
+        return matchesFilter && matchesQuery;
+      });
+  }, [leadsData, businessesData, filter, query]);
+
+  const selectedBiz =
+    businessesData?.results.find((b) => b.id === selectedLeadDetail?.business_id) || null;
+
+  if (leadsError) {
+    return (
+      <AppShell title="Leads">
+        <div className="flex h-64 items-center justify-center rounded-lg border border-border bg-card p-6 text-center shadow-sm">
+          <p className="text-destructive">Failed to load leads. Please try again later.</p>
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell
       title="Leads"
-      description={`${rows.length} of ${leads.length} businesses match your view`}
+      description={leadsLoading ? "Loading leads..." : `${rows.length} businesses match your view`}
       actions={
         <Button>
           <Plus className="size-4" />
@@ -89,7 +134,11 @@ function LeadsPage() {
               <SlidersHorizontal className="size-4" />
               Filters
             </Button>
-            <Tabs value={filter} onValueChange={(v) => setFilter(v as LeadStatus | "all")} className="col-span-2 sm:ml-auto">
+            <Tabs
+              value={filter}
+              onValueChange={(v) => setFilter(v as LeadStatus | "all")}
+              className="col-span-2 sm:ml-auto"
+            >
               <TabsList className="h-9 overflow-x-auto">
                 {filters.map((f) => (
                   <TabsTrigger key={f.key} value={f.key} className="text-xs">
@@ -104,127 +153,195 @@ function LeadsPage() {
             <table className="w-full min-w-[520px] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                  <th scope="col" className="px-4 py-2.5 font-medium">Business</th>
-                  <th scope="col" className="px-4 py-2.5 font-medium">Website</th>
-                  <th scope="col" className="px-4 py-2.5 font-medium">Status</th>
-                  <th scope="col" className="hidden px-4 py-2.5 font-medium 2xl:table-cell">Owner</th>
-                  <th scope="col" className="hidden px-4 py-2.5 text-right font-medium 2xl:table-cell">Est. value</th>
-                  <th scope="col" className="px-4 py-2.5 text-right font-medium">Score</th>
+                  <th scope="col" className="px-4 py-2.5 font-medium">
+                    Business
+                  </th>
+                  <th scope="col" className="px-4 py-2.5 font-medium">
+                    Website
+                  </th>
+                  <th scope="col" className="px-4 py-2.5 font-medium">
+                    Status
+                  </th>
+                  <th scope="col" className="hidden px-4 py-2.5 font-medium 2xl:table-cell">
+                    Priority
+                  </th>
+                  <th
+                    scope="col"
+                    className="hidden px-4 py-2.5 text-right font-medium 2xl:table-cell"
+                  >
+                    Est. value
+                  </th>
+                  <th scope="col" className="px-4 py-2.5 text-right font-medium">
+                    Score
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {rows.map((lead) => (
-                  <tr
-                    key={lead.id}
-                    onClick={() => setSelectedId(lead.id)}
-                    tabIndex={0}
-                    onKeyDown={(e) => e.key === "Enter" && setSelectedId(lead.id)}
-                    className={cn(
-                      "cursor-pointer border-b border-border/70 transition-colors last:border-0 hover:bg-accent/50",
-                      selectedId === lead.id && "bg-accent/70",
-                    )}
-                  >
-                    <td className="px-4 py-3">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <span className="grid size-8 shrink-0 place-items-center rounded-md bg-surface-raised text-[11px] font-semibold">
-                          {lead.name.slice(0, 2).toUpperCase()}
-                        </span>
-                        <span className="min-w-0">
-                          <span className="block truncate font-medium">{lead.name}</span>
-                          <span className="block truncate text-xs text-muted-foreground">
-                            {lead.category} · {lead.city}
-                          </span>
-                        </span>
-                      </div>
+                {leadsLoading || bizLoading ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-10 text-center">
+                      <Loader2 className="mx-auto size-6 animate-spin text-muted-foreground" />
                     </td>
-                    <td className="px-4 py-3"><WebsiteTag state={lead.websiteState} /></td>
-                    <td className="px-4 py-3"><StatusPill status={lead.status} /></td>
-                    <td className="hidden px-4 py-3 text-xs text-muted-foreground 2xl:table-cell">{lead.owner}</td>
-                    <td className="text-numeric hidden px-4 py-3 text-right text-xs 2xl:table-cell">{formatCurrency(lead.estValue)}</td>
-                    <td className="px-4 py-3 text-right"><ScoreBadge score={lead.score} /></td>
                   </tr>
-                ))}
+                ) : rows.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={6}
+                      className="px-4 py-10 text-center text-sm text-muted-foreground"
+                    >
+                      No businesses match this view.
+                    </td>
+                  </tr>
+                ) : (
+                  rows.map((lead) => (
+                    <tr
+                      key={lead.id}
+                      onClick={() => setSelectedLeadId(lead.id)}
+                      tabIndex={0}
+                      onKeyDown={(e) => e.key === "Enter" && setSelectedLeadId(lead.id)}
+                      className={cn(
+                        "cursor-pointer border-b border-border/70 transition-colors last:border-0 hover:bg-accent/50",
+                        selectedLeadId === lead.id && "bg-accent/70",
+                      )}
+                    >
+                      <td className="px-4 py-3">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <span className="grid size-8 shrink-0 place-items-center rounded-md bg-surface-raised text-[11px] font-semibold">
+                            {lead.business.name.slice(0, 2).toUpperCase()}
+                          </span>
+                          <span className="min-w-0">
+                            <span className="block truncate font-medium">{lead.business.name}</span>
+                            <span className="block truncate text-xs text-muted-foreground">
+                              {lead.business.category} · {lead.business.city}
+                            </span>
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <WebsiteTag
+                          state={lead.business.website ? "has_website" : "missing_website"}
+                        />
+                      </td>
+                      <td className="px-4 py-3">
+                        <StatusPill status={lead.status as LeadStatus} />
+                      </td>
+                      <td className="hidden px-4 py-3 text-xs text-muted-foreground 2xl:table-cell">
+                        P{lead.priority}
+                      </td>
+                      <td className="text-numeric hidden px-4 py-3 text-right text-xs 2xl:table-cell">
+                        {formatCurrency(lead.business.opportunity_score * 120)}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <ScoreBadge score={lead.business.opportunity_score} />
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
-            {rows.length === 0 ? (
-              <p className="px-4 py-10 text-center text-sm text-muted-foreground">No businesses match this view.</p>
-            ) : null}
           </div>
         </div>
 
-        {selected ? (
+        {selectedLeadId ? (
           <aside className="panel h-fit xl:sticky xl:top-24">
-            <div className="flex items-start justify-between gap-3 border-b border-border p-4">
-              <div className="min-w-0">
-                <p className="truncate font-display text-base font-semibold">{selected.name}</p>
-                <p className="truncate text-xs text-muted-foreground">
-                  {selected.category} · {selected.city}, {selected.country}
-                </p>
+            {leadDetailLoading || bizDetailLoading ? (
+              <div className="grid h-64 place-items-center p-6 text-center">
+                <Loader2 className="mx-auto size-6 animate-spin text-muted-foreground" />
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label="Close detail panel"
-                className="size-8 shrink-0"
-                onClick={() => setSelectedId(null)}
-              >
-                <X className="size-4" />
-              </Button>
-            </div>
-
-            <div className="flex items-center gap-3 border-b border-border p-4">
-              <ScoreBadge score={selected.score} size="lg" />
-              <div className="min-w-0">
-                <p className="text-xs font-medium">Opportunity score</p>
-                <p className="text-xs text-muted-foreground">
-                  Est. {formatCurrency(selected.estValue)} · {selected.employees} employees
-                </p>
-              </div>
-              <span className="ml-auto"><StatusPill status={selected.status} /></span>
-            </div>
-
-            <div className="space-y-4 p-4">
-              <div className="rounded-lg border border-primary/20 bg-primary-soft/30 p-3">
-                <p className="flex items-center gap-1.5 text-xs font-semibold text-primary">
-                  <Sparkles className="size-3.5" /> AI summary
-                </p>
-                <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{selected.summary}</p>
-              </div>
-
-              <div>
-                <p className="mb-2 text-xs font-semibold">Detected signals</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {selected.signals.map((s) => (
-                    <span key={s} className="rounded-md border border-border bg-surface-raised px-2 py-1 text-[11px] text-muted-foreground">
-                      {s}
-                    </span>
-                  ))}
+            ) : selectedBizDetail ? (
+              <>
+                <div className="flex items-start justify-between gap-3 border-b border-border p-4">
+                  <div className="min-w-0">
+                    <p className="truncate font-display text-base font-semibold">
+                      {selectedBiz?.name}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {selectedBiz?.category} · {selectedBiz?.city}, {selectedBiz?.country}
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Close detail panel"
+                    className="size-8 shrink-0"
+                    onClick={() => setSelectedLeadId(null)}
+                  >
+                    <X className="size-4" />
+                  </Button>
                 </div>
-              </div>
 
-              <dl className="space-y-2.5 text-xs">
-                <Row icon={<Globe className="size-3.5" />} label="Website" value={selected.website ?? "None found"} />
-                <Row icon={<Star className="size-3.5" />} label="Rating" value={`${selected.rating} · ${selected.reviews} reviews`} />
-                <Row icon={<Building2 className="size-3.5" />} label="Owner" value={selected.owner} />
-                <Row icon={<Mail className="size-3.5" />} label="Email" value={selected.email} />
-                <Row icon={<Phone className="size-3.5" />} label="Phone" value={selected.phone} />
-              </dl>
+                <div className="flex items-center gap-3 border-b border-border p-4">
+                  <ScoreBadge score={selectedBiz?.opportunity_score ?? 0} size="lg" />
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium">Opportunity score</p>
+                    <p className="text-xs text-muted-foreground">
+                      Est. {formatCurrency((selectedBiz?.opportunity_score ?? 0) * 120)}
+                    </p>
+                  </div>
+                  <span className="ml-auto">
+                    <StatusPill status={(selectedLeadDetail?.status as LeadStatus) || "new"} />
+                  </span>
+                </div>
 
-              <div className="flex gap-2">
-                <Button className="flex-1">
-                  <Sparkles className="size-4" />
-                  Draft proposal
-                </Button>
-                <Button variant="outline" className="flex-1">
-                  Start outreach
-                </Button>
+                <div className="space-y-4 p-4">
+                  <div className="rounded-lg border border-primary/20 bg-primary-soft/30 p-3">
+                    <p className="flex items-center gap-1.5 text-xs font-semibold text-primary">
+                      <Sparkles className="size-3.5" /> Next Follow Up
+                    </p>
+                    <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+                      {selectedLeadDetail?.next_follow_up
+                        ? new Date(selectedLeadDetail.next_follow_up).toLocaleString()
+                        : "None scheduled."}
+                    </p>
+                  </div>
+
+                  {selectedLeadDetail?.notes && (
+                    <div>
+                      <p className="mb-2 text-xs font-semibold">Notes</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {selectedLeadDetail.notes}
+                      </p>
+                    </div>
+                  )}
+
+                  <dl className="space-y-2.5 text-xs">
+                    <Row
+                      icon={<Globe className="size-3.5" />}
+                      label="Website"
+                      value={selectedBiz?.website || "None found"}
+                    />
+                    <Row
+                      icon={<Star className="size-3.5" />}
+                      label="Rating"
+                      value={`${selectedBiz?.rating || 0} · ${selectedBiz?.reviews || 0} reviews`}
+                    />
+                    <Row
+                      icon={<Phone className="size-3.5" />}
+                      label="Phone"
+                      value={selectedBizDetail?.detail?.phone || "Unknown"}
+                    />
+                  </dl>
+
+                  <div className="flex gap-2">
+                    <Button className="flex-1">
+                      <Sparkles className="size-4" />
+                      Draft proposal
+                    </Button>
+                    <Button variant="outline" className="flex-1">
+                      Start outreach
+                    </Button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="grid h-64 place-items-center p-6 text-center text-sm text-muted-foreground">
+                Lead detail not available.
               </div>
-              <p className="text-center text-[11px] text-muted-foreground">Last activity {selected.lastActivity}</p>
-            </div>
+            )}
           </aside>
         ) : (
           <aside className="panel grid h-64 place-items-center p-6 text-center text-sm text-muted-foreground xl:sticky xl:top-24">
-            Select a business to see its intelligence profile.
+            Select a lead to see details.
           </aside>
         )}
       </div>

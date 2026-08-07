@@ -4,10 +4,10 @@ import { routeTree } from "./routeTree.gen";
 
 export interface RouterContext {
   queryClient: QueryClient;
-  auth: ReturnType<typeof import('./lib/auth').useAuth>;
+  auth: ReturnType<typeof import("./lib/auth").useAuth>;
 }
 
-export const getRouter = (authContext: ReturnType<typeof import('./lib/auth').useAuth>) => {
+export const getRouter = (authContext: ReturnType<typeof import("./lib/auth").useAuth>) => {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
@@ -20,7 +20,7 @@ export const getRouter = (authContext: ReturnType<typeof import('./lib/auth').us
 
   const router = createRouter({
     routeTree,
-    context: { 
+    context: {
       queryClient,
       auth: authContext,
     },
@@ -32,7 +32,7 @@ export const getRouter = (authContext: ReturnType<typeof import('./lib/auth').us
 };
 
 // Register the router instance for type safety
-declare module '@tanstack/react-router' {
+declare module "@tanstack/react-router" {
   interface Register {
     router: ReturnType<typeof getRouter>;
   }
