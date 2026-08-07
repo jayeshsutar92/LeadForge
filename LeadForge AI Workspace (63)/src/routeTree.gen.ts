@@ -13,8 +13,10 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as DiscoverRouteImport } from './routes/discover'
 import { Route as LeadsRouteImport } from './routes/leads'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as OutreachRouteImport } from './routes/outreach'
 import { Route as ProposalsRouteImport } from './routes/proposals'
+import { Route as RegisterRouteImport } from './routes/register'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -36,6 +38,11 @@ const LeadsRoute = LeadsRouteImport.update({
   path: '/leads',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OutreachRoute = OutreachRouteImport.update({
   id: '/outreach',
   path: '/outreach',
@@ -46,22 +53,31 @@ const ProposalsRoute = ProposalsRouteImport.update({
   path: '/proposals',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RegisterRoute = RegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
   '/discover': typeof DiscoverRoute
   '/leads': typeof LeadsRoute
+  '/login': typeof LoginRoute
   '/outreach': typeof OutreachRoute
   '/proposals': typeof ProposalsRoute
+  '/register': typeof RegisterRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
   '/discover': typeof DiscoverRoute
   '/leads': typeof LeadsRoute
+  '/login': typeof LoginRoute
   '/outreach': typeof OutreachRoute
   '/proposals': typeof ProposalsRoute
+  '/register': typeof RegisterRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -69,23 +85,42 @@ export interface FileRoutesById {
   '/analytics': typeof AnalyticsRoute
   '/discover': typeof DiscoverRoute
   '/leads': typeof LeadsRoute
+  '/login': typeof LoginRoute
   '/outreach': typeof OutreachRoute
   '/proposals': typeof ProposalsRoute
+  '/register': typeof RegisterRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/analytics' | '/discover' | '/leads' | '/outreach' | '/proposals'
+    | '/'
+    | '/analytics'
+    | '/discover'
+    | '/leads'
+    | '/login'
+    | '/outreach'
+    | '/proposals'
+    | '/register'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/analytics' | '/discover' | '/leads' | '/outreach' | '/proposals'
+  to:
+    | '/'
+    | '/analytics'
+    | '/discover'
+    | '/leads'
+    | '/login'
+    | '/outreach'
+    | '/proposals'
+    | '/register'
   id:
     | '__root__'
     | '/'
     | '/analytics'
     | '/discover'
     | '/leads'
+    | '/login'
     | '/outreach'
     | '/proposals'
+    | '/register'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -93,8 +128,10 @@ export interface RootRouteChildren {
   AnalyticsRoute: typeof AnalyticsRoute
   DiscoverRoute: typeof DiscoverRoute
   LeadsRoute: typeof LeadsRoute
+  LoginRoute: typeof LoginRoute
   OutreachRoute: typeof OutreachRoute
   ProposalsRoute: typeof ProposalsRoute
+  RegisterRoute: typeof RegisterRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -127,6 +164,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LeadsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/outreach': {
       id: '/outreach'
       path: '/outreach'
@@ -141,6 +185,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProposalsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -149,8 +200,10 @@ const rootRouteChildren: RootRouteChildren = {
   AnalyticsRoute: AnalyticsRoute,
   DiscoverRoute: DiscoverRoute,
   LeadsRoute: LeadsRoute,
+  LoginRoute: LoginRoute,
   OutreachRoute: OutreachRoute,
   ProposalsRoute: ProposalsRoute,
+  RegisterRoute: RegisterRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

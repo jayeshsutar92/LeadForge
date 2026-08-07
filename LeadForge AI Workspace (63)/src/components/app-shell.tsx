@@ -10,8 +10,11 @@ import {
   Settings,
   Sparkles,
   Users,
+  LogOut,
 } from "lucide-react";
 import type { ReactNode } from "react";
+
+import { useAuth } from "@/lib/auth";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -81,18 +84,7 @@ export function AppShell({
           <p className="mt-2 text-[11px] text-muted-foreground">Resets in 12 days</p>
         </div>
 
-        <div className="flex items-center gap-2.5 border-t border-sidebar-border px-4 py-3">
-          <div className="grid size-8 shrink-0 place-items-center rounded-full bg-primary-soft text-xs font-semibold text-primary">
-            MC
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-medium">Maya Chen</p>
-            <p className="truncate text-[11px] text-muted-foreground">Studio Northwind</p>
-          </div>
-          <Button variant="ghost" size="icon" aria-label="Workspace settings" className="size-8">
-            <Settings className="size-4" />
-          </Button>
-        </div>
+        <UserSidebarProfile />
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -137,6 +129,29 @@ export function AppShell({
 
         <main className="min-w-0 flex-1 px-5 py-6 sm:px-7">{children}</main>
       </div>
+    </div>
+  );
+}
+
+function UserSidebarProfile() {
+  const { user, logout } = useAuth();
+  
+  if (!user) return null;
+  
+  const initials = user.name ? user.name.substring(0, 2).toUpperCase() : 'U';
+
+  return (
+    <div className="flex items-center gap-2.5 border-t border-sidebar-border px-4 py-3">
+      <div className="grid size-8 shrink-0 place-items-center rounded-full bg-primary-soft text-xs font-semibold text-primary">
+        {initials}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-xs font-medium">{user.name}</p>
+        <p className="truncate text-[11px] text-muted-foreground">{user.email}</p>
+      </div>
+      <Button variant="ghost" size="icon" aria-label="Log out" className="size-8 text-muted-foreground hover:text-foreground" onClick={() => logout()}>
+        <LogOut className="size-4" />
+      </Button>
     </div>
   );
 }

@@ -72,7 +72,10 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   );
 }
 
-export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+export const Route = createRootRouteWithContext<{ 
+  queryClient: QueryClient;
+  auth: ReturnType<typeof import('../lib/auth').useAuth>;
+}>()({
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -121,13 +124,46 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+import { AuthProvider, useAuth } from "../lib/auth";
+import { useRouterState } from "@tanstack/react-router";
+
+function AuthWrapper({ children }: { children: ReactNode }) {
+  const { isAuthenticated, isLoading } = useAuth();
+  const router = useRouter();
+  const pathname = useRouterState({ select: s => s.location.pathname });
+  
+  const isPublicRoute = pathname === '/login' || pathname === '/register';
+  
+  useEffect(() => {
+    if (!isLoading) {
+      if (!isAuthenticated && !isPublicRoute) {
+        router.navigate({ to: '/login', replace: true });
+      } else if (isAuthenticated && isPublicRoute) {
+        router.navigate({ to: '/', replace: true });
+      }
+    }
+  }, [isLoading, isAuthenticated, isPublicRoute, router]);
+
+  if (isLoading) {
+    return <div className="flex h-screen w-full items-center justify-center">Loading session...</div>;
+  }
+  
+  if (!isAuthenticated && !isPublicRoute) return null;
+  if (isAuthenticated && isPublicRoute) return null;
+  
+  return <>{children}</>;
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      <AuthProvider>
+        <AuthWrapper>
+          <Outlet />
+        </AuthWrapper>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
