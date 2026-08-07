@@ -1,28 +1,31 @@
-# syntax=docker/dockerfile:1
-
 FROM node:20-alpine AS builder
+
 WORKDIR /app
 
 # Install dependencies
-COPY package*.json ./
-RUN npm ci
+COPY package.json package-lock.json ./
+RUN npm install
 
-# Copy source and build
+# Copy all source files
 COPY . .
-ENV NODE_ENV=production
+
+# Build the Node.js server (Nitro preset)
+ENV NITRO_PRESET=node-server
 RUN npm run build
 
-# Production server
-FROM nginx:alpine AS runtime
-# Copy built assets to Nginx
-COPY --from=builder /app/dist /usr/share/nginx/html
+# Production image
+FROM node:20-alpine AS runner
 
-# Provide a custom nginx config for SPA routing (redirect all to index.html)
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+WORKDIR /app
 
+# Copy output from builder
+COPY --from=builder /app/.output ./.output
+
+# Expose port 80 since docker-compose maps 3000:80
 EXPOSE 80
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-  CMD wget -qO- http://localhost/ || exit 1
+ENV PORT=80
+ENV HOST=0.0.0.0
+ENV NODE_ENV=production
 
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["node", ".output/server/index.mjs"]

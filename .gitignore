@@ -43,9 +43,6 @@ tmp/
 temp/
 memory/
 backend/memory/
-test-backend/
-LeadForge AI Workspace (63)/
-
 # IDE & OS Artifacts
 .vscode/
 !.vscode/extensions.json
