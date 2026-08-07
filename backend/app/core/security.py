@@ -17,6 +17,9 @@ def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
+get_password_hash = hash_password
+
+
 def verify_password(password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(password.encode("utf-8"), hashed_password.encode("utf-8"))
 
@@ -48,3 +51,14 @@ def decode_token(token: str) -> dict[str, Any]:
         return jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
     except JWTError as exc:
         raise ValueError("Invalid token") from exc
+
+
+def create_access_token(subject: str, expires_delta: timedelta | None = None) -> str:
+    if expires_delta is None:
+        expires_delta = timedelta(minutes=60)
+    return create_token(
+        subject=subject,
+        token_type=TokenType.ACCESS,
+        expires_delta=expires_delta,
+    )
+

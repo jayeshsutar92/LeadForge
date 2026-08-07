@@ -29,7 +29,7 @@ class AuthService:
 
         user = User(
             email=payload.email.lower(),
-            full_name=payload.full_name,
+            full_name=payload.full_name or payload.name,
             hashed_password=hash_password(payload.password),
         )
         self.session.add(user)
