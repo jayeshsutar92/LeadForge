@@ -150,14 +150,53 @@ export const useTriggerAnalysis = () => {
   });
 };
 
+export const useOpportunity = (slug: string | null, biId: string | null) => {
+  return useQuery({
+    queryKey: ["businesses", slug, "opportunity", biId],
+    queryFn: async () => {
+      if (!slug || !biId) return null;
+      const res = await apiClient.get(`/businesses/${slug}/intelligence/${biId}/opportunity`);
+      return res.data;
+    },
+    enabled: !!slug && !!biId,
+    retry: false, // May 404 if not generated yet
+  });
+};
+
+export const useGenerateOpportunity = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ slug, biId }: { slug: string; biId: string }) => {
+      const res = await apiClient.post(`/businesses/${slug}/intelligence/${biId}/opportunity/generate`);
+      return res.data;
+    },
+    onSuccess: (data, { slug, biId }) => {
+      queryClient.invalidateQueries({ queryKey: ["businesses", slug, "opportunity", biId] });
+    },
+  });
+};
+
 export const useGenerateProposal = () => {
   return useMutation({
     mutationFn: async ({ slug, opportunityId }: { slug: string; opportunityId: string }) => {
       const res = await apiClient.post(
-        `/businesses/${slug}/opportunity/${opportunityId}/proposal/generate`,
+        `/businesses/${slug}/opportunity/${opportunityId}/proposal/generate`, null, { params: { template_type: 'standard' } }
       );
       return res.data;
     },
+  });
+};
+
+export const useProposal = (slug: string | null, opportunityId: string | null) => {
+  return useQuery({
+    queryKey: ["businesses", slug, "proposal", opportunityId],
+    queryFn: async () => {
+      if (!slug || !opportunityId) return null;
+      const res = await apiClient.get(`/businesses/${slug}/opportunity/${opportunityId}/proposal`);
+      return res.data;
+    },
+    enabled: !!slug && !!opportunityId,
+    retry: false,
   });
 };
 
