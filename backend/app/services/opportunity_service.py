@@ -62,8 +62,8 @@ class OpportunityService:
         if bi.business_id != business.id:
             raise HTTPException(status_code=400, detail="Business Intelligence record does not belong to this business")
             
-        # Run deterministic opportunity generation
-        opp_data = generate_opportunity(bi.data, business.name)
+        # Run AI opportunity generation
+        opp_data = await generate_opportunity(bi.data, business.name)
         
         opp = await self.repo.create(bi.id, opp_data)
         

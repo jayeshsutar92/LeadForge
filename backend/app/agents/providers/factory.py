@@ -2,6 +2,7 @@ from typing import Any, Dict
 
 from app.agents.providers.base import LLMProvider
 from app.agents.providers.dummy import DummyProvider
+from app.agents.providers.groq_provider import GroqProvider
 
 
 class ProviderFactory:
@@ -9,10 +10,7 @@ class ProviderFactory:
 
     _PROVIDERS = {
         "dummy": DummyProvider,
-        # Future integrations:
-        # "openai": OpenAIProvider,
-        # "anthropic": AnthropicProvider,
-        # "gemini": GeminiProvider,
+        "groq": GroqProvider,
     }
 
     @classmethod

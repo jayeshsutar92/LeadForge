@@ -10,6 +10,12 @@ from app.repositories.opportunity import OpportunityRepository
 from app.repositories.proposal import ProposalRepository
 from app.services.analysis.outreach_generator import generate_outreach
 from app.repositories.business import BusinessRepository
+from app.core.config import get_settings
+from app.agents.providers.factory import ProviderFactory
+import logging
+
+logger = logging.getLogger(__name__)
+from app.repositories.business import BusinessRepository
 
 _PROPOSAL_CACHE_TTL = 3600  # 1 hour
 
@@ -19,6 +25,8 @@ class ProposalService:
         self.session = session
         self.repo = ProposalRepository(session)
         self.opp_repo = OpportunityRepository(session)
+        from app.repositories.business_intelligence import BusinessIntelligenceRepository
+        self.bi_repo = BusinessIntelligenceRepository(session)
         self.business_repo = BusinessRepository(session)
         self.redis = get_redis_client()
 
@@ -49,26 +57,50 @@ class ProposalService:
         payload = json.dumps({"id": str(proposal.id)})
         await self.redis.set(key, payload, ex=_PROPOSAL_CACHE_TTL)
 
-    def _generate_content_from_opp(self, opp_data: dict, template_type: str = "standard") -> dict:
-        """Deterministically map opportunity recommendations to proposal structure using a template."""
-        recs = opp_data.get("recommendations", {})
+    async def _generate_content_from_opp(self, opp_data: dict, template_type: str = "standard", business_name: str = "") -> dict:
+        """Use AI to generate proposal content based on opportunity recommendations."""
         
-        title = "Digital Presence Optimization Proposal"
-        if template_type == "premium":
-            title = "Comprehensive Digital Transformation Proposal"
-        elif template_type == "quick_win":
-            title = "High-Impact Digital Improvements Proposal"
-            
-        return {
-            "template": template_type,
-            "title": title,
-            "executive_summary": "Based on our analysis, we have identified key areas for improvement.",
-            "design_theme": recs.get("theme", "Modern"),
-            "color_palette": recs.get("palette", []),
-            "proposed_sections": recs.get("suggested_sections", []),
-            "investment": recs.get("price_range", "Custom Pricing"),
-            "timeline": recs.get("estimated_timeline", "TBD"),
+        settings = get_settings()
+        config = settings.model_dump()
+        
+        try:
+            provider = ProviderFactory.get_provider(settings.ai_provider, config=config)
+        except Exception as e:
+            logger.error(f"Failed to load AI provider for proposal: {e}")
+            raise ValueError(f"AI Provider error: {e}")
+
+        schema = {
+            "type": "object",
+            "properties": {
+                "template": {"type": "string"},
+                "title": {"type": "string"},
+                "executive_summary": {"type": "string", "description": "A compelling 2-3 paragraph executive summary of the proposal."},
+                "design_theme": {"type": "string"},
+                "color_palette": {"type": "array", "items": {"type": "string"}},
+                "proposed_sections": {"type": "array", "items": {"type": "string"}},
+                "investment": {"type": "string"},
+                "timeline": {"type": "string"}
+            },
+            "required": ["template", "title", "executive_summary", "design_theme", "color_palette", "proposed_sections", "investment", "timeline"]
         }
+        
+        prompt = f"""
+        You are an expert sales strategist and copywriter. Generate a business proposal for {business_name}.
+        
+        Opportunity Data (from our analysis):
+        {json.dumps(opp_data, indent=2)}
+        
+        Template type requested: {template_type} (standard, premium, or quick_win)
+        
+        Create a tailored, persuasive executive summary. Adapt the theme, sections, investment, and timeline based on the opportunity data and the requested template type.
+        """
+        
+        try:
+            result = await provider.generate_json(prompt=prompt, schema=schema)
+            return result
+        except Exception as e:
+            logger.error(f"AI generation failed for proposal: {e}")
+            raise ValueError(f"AI generation failed: {e}")
 
     async def generate_proposal(self, opportunity_id: UUID, template_type: str = "standard") -> Proposal:
         opp = await self.opp_repo.get_by_id(opportunity_id)
@@ -78,7 +110,14 @@ class ProposalService:
         latest = await self.repo.get_latest_by_opportunity(opportunity_id)
         version = latest.version + 1 if latest else 1
         
-        content = self._generate_content_from_opp(opp.data, template_type)
+        bi = await self.bi_repo.get_by_id(opp.business_intelligence_id)
+        business_name = ""
+        if bi:
+            business = await self.business_repo.get_by_id(bi.business_id)
+            if business:
+                business_name = business.name
+        
+        content = await self._generate_content_from_opp(opp.data, template_type, business_name)
         
         proposal = await self.repo.create(opportunity_id, version, content)
         
@@ -150,4 +189,4 @@ class ProposalService:
         if not opp:
             raise HTTPException(status_code=404, detail="Opportunity not found")
             
-        return generate_outreach(business.name, opp.data, contact_name)
+        return await generate_outreach(business.name, opp.data, contact_name)

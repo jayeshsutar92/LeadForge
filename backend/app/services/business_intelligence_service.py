@@ -9,6 +9,11 @@ from app.models.business_intelligence import BusinessIntelligence
 from app.repositories.business import BusinessRepository
 from app.repositories.business_intelligence import BusinessIntelligenceRepository
 from app.services.analysis.deterministic import analyze_website
+from app.core.config import get_settings
+from app.agents.providers.factory import ProviderFactory
+import logging
+
+logger = logging.getLogger(__name__)
 
 _BI_CACHE_TTL = 86400  # 24 hours
 
@@ -63,6 +68,21 @@ class BusinessIntelligenceService:
         if not url:
             analysis_data["summary"] = f"{business.name} is a {business.category} business located in {business.city}, {business.country}."
             analysis_data["website_metadata"]["title"] = business.name
+        else:
+            # Use AI to generate a proper business analysis summary
+            try:
+                settings = get_settings()
+                config = settings.model_dump()
+                provider = ProviderFactory.get_provider(settings.ai_provider, config=config)
+                prompt = f"Analyze this website data and write a concise 2-sentence summary of what the business '{business.name}' does, its core offerings, and its target audience based on the following extracted data: {json.dumps(analysis_data['website_metadata'])}"
+                
+                ai_summary = await provider.generate(prompt=prompt)
+                if ai_summary:
+                    analysis_data["summary"] = ai_summary
+            except Exception as e:
+                logger.error(f"Failed to generate AI summary for BI: {e}")
+                # Don't raise error, fallback to deterministic summary
+                pass
             
         bi = await self.repo.create(business.id, analysis_data, analysis_type="deterministic")
         

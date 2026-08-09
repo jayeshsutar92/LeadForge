@@ -160,18 +160,6 @@ export const useGenerateProposal = () => {
   });
 };
 
-export const useLegacyProposal = (slug: string | null) => {
-  return useQuery({
-    queryKey: ["businesses", slug, "proposal"],
-    queryFn: async () => {
-      if (!slug) return null;
-      const res = await apiClient.get(`/businesses/${slug}/proposal`);
-      return res.data;
-    },
-    enabled: !!slug,
-  });
-};
-
 export const useGenerateOutreach = () => {
   return useMutation({
     mutationFn: async ({

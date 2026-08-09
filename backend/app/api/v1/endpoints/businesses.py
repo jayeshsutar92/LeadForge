@@ -357,36 +357,6 @@ async def generate_outreach(
     return outreach
 
 
-# ─── Legacy Proposal Compatibility ────────────────────────────────────────────
-
-@router.get("/{slug}/proposal", response_model=ProposalResponse)
-async def get_legacy_proposal(
-    slug: str,
-    user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db_session),
-):
-    # This preserves existing frontend compatibility
-    # Normally this would trigger the full BI -> Opp -> Proposal pipeline
-    biz_service = BusinessService(session)
-    b = await biz_service.business_repo.get_by_slug(slug)
-    if not b:
-        raise HTTPException(status_code=404, detail="Business not found")
-        
-    proposal_service = ProposalService(session)
-    # Return a mocked/dummy response that satisfies the frontend to prevent breakage
-    # while keeping the database clean.
-    return ProposalResponse.model_validate({
-        "id": str(b.id),
-        "opportunity_id": str(b.id),
-        "version": 1,
-        "content": {
-            "title": "Generated Proposal",
-            "executive_summary": "Proposal summary",
-        },
-        "created_at": b.created_at,
-        "updated_at": b.updated_at,
-    })
-
 
 # ─── Business CRUD ────────────────────────────────────────────────────────────
 
