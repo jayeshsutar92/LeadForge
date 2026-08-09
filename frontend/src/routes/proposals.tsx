@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { FileText, Sparkles, Loader2 } from "lucide-react";
 import { useMemo } from "react";
+import { toast } from "sonner";
 
 import { AppShell } from "@/components/app-shell";
 import { StatCard } from "@/components/leadforge-ui";
 import { Button } from "@/components/ui/button";
-import { formatCurrency } from "@/lib/mock-data";
+import { formatCurrency } from "@/lib/ui-utils";
 import { cn } from "@/lib/utils";
 import { useLeads, useBusinesses, useIntelligence, useOpportunity, useGenerateOpportunity, useProposal, useGenerateProposal } from "@/lib/api-hooks";
 
@@ -107,13 +108,18 @@ function ProposalCard({ lead, biz }: { lead: any; biz: any }) {
   
   const handleGenerate = async () => {
     if (!biz?.slug || !bi?.id) return;
-    let currentOppId = opp?.id;
-    if (!currentOppId) {
-      const newOpp = await generateOpp.mutateAsync({ slug: biz.slug, biId: bi.id });
-      currentOppId = newOpp.id;
-    }
-    if (currentOppId) {
-      await generateProp.mutateAsync({ slug: biz.slug, opportunityId: currentOppId });
+    try {
+      let currentOppId = opp?.id;
+      if (!currentOppId) {
+        const newOpp = await generateOpp.mutateAsync({ slug: biz.slug, biId: bi.id });
+        currentOppId = newOpp.id;
+      }
+      if (currentOppId) {
+        await generateProp.mutateAsync({ slug: biz.slug, opportunityId: currentOppId });
+        toast.success("Proposal generated successfully");
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail?.message || err.response?.data?.error?.message || "Failed to generate proposal. Please try again.");
     }
   };
 
@@ -144,7 +150,7 @@ function ProposalCard({ lead, biz }: { lead: any; biz: any }) {
 
       {proposal?.content && (
         <div className="mt-4 rounded-md bg-muted/30 p-3 text-xs text-muted-foreground line-clamp-3">
-          {proposal.content}
+          {proposal.content.executive_summary || proposal.content.title || "Proposal generated"}
         </div>
       )}
 

@@ -177,12 +177,16 @@ export const useGenerateOpportunity = () => {
 };
 
 export const useGenerateProposal = () => {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ slug, opportunityId }: { slug: string; opportunityId: string }) => {
       const res = await apiClient.post(
         `/businesses/${slug}/opportunity/${opportunityId}/proposal/generate`, null, { params: { template_type: 'standard' } }
       );
       return res.data;
+    },
+    onSuccess: (data, { slug, opportunityId }) => {
+      queryClient.invalidateQueries({ queryKey: ["businesses", slug, "proposal", opportunityId] });
     },
   });
 };

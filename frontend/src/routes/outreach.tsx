@@ -7,6 +7,7 @@ import { SectionHeader, StatCard } from "@/components/leadforge-ui";
 import { Button } from "@/components/ui/button";
 import { useLeads, useBusinesses, useIntelligence, useOpportunity, useGenerateOpportunity, useGenerateOutreach } from "@/lib/api-hooks";
 import { useState } from "react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/outreach")({
   head: () => ({
@@ -107,14 +108,19 @@ function OutreachCard({ lead, biz }: { lead: any; biz: any }) {
   
   const handleGenerate = async () => {
     if (!biz?.slug || !bi?.id) return;
-    let currentOppId = opp?.id;
-    if (!currentOppId) {
-      const newOpp = await generateOpp.mutateAsync({ slug: biz.slug, biId: bi.id });
-      currentOppId = newOpp.id;
-    }
-    if (currentOppId) {
-      const data = await generateOutreach.mutateAsync({ slug: biz.slug, opportunityId: currentOppId });
-      setOutreachText(data);
+    try {
+      let currentOppId = opp?.id;
+      if (!currentOppId) {
+        const newOpp = await generateOpp.mutateAsync({ slug: biz.slug, biId: bi.id });
+        currentOppId = newOpp.id;
+      }
+      if (currentOppId) {
+        const data = await generateOutreach.mutateAsync({ slug: biz.slug, opportunityId: currentOppId });
+        setOutreachText(data);
+        toast.success("Outreach drafted successfully");
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail?.message || err.response?.data?.error?.message || "Failed to draft outreach. Please try again.");
     }
   };
 

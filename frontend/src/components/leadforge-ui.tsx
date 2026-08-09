@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
-import { statusMeta, websiteStateMeta, type LeadStatus, type WebsiteState } from "@/lib/mock-data";
+import { statusMeta, websiteStateMeta, type LeadStatus, type WebsiteState } from "@/lib/ui-utils";
 
 export function StatusPill({ status }: { status: LeadStatus }) {
   const meta = statusMeta[status];

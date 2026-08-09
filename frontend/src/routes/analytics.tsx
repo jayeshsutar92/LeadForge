@@ -4,7 +4,7 @@ import { Loader2 } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
 import { SectionHeader, StatCard } from "@/components/leadforge-ui";
-import { formatCurrency } from "@/lib/mock-data";
+import { formatCurrency } from "@/lib/ui-utils";
 import { useLeads, useBusinessStats } from "@/lib/api-hooks";
 
 export const Route = createFileRoute("/analytics")({
@@ -60,8 +60,9 @@ function Analytics() {
       <div className="space-y-6">
         <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
-            label="Won revenue"
+            label="Est. Won revenue"
             value={formatCurrency(wonRevenue)}
+            hint="based on $15k avg"
           />
           <StatCard label="Lead → deal" value={`${leadToDeal.toFixed(1)}%`} />
           <StatCard label="Total Leads" value={totalLeads.toString()} />

@@ -11,8 +11,8 @@ import {
   WebsiteTag,
 } from "@/components/leadforge-ui";
 import { Button } from "@/components/ui/button";
-import { formatCurrency, type LeadStatus } from "@/lib/mock-data";
-import { useBusinessStats, useLeads } from "@/lib/api-hooks";
+import { formatCurrency, type LeadStatus } from "@/lib/ui-utils";
+import { useBusinessStats, useLeads, useBusinesses } from "@/lib/api-hooks";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -31,6 +31,7 @@ export const Route = createFileRoute("/")({
 function Overview() {
   const { data: stats, isLoading: statsLoading, isError: statsError } = useBusinessStats();
   const { data: leadsData, isLoading: leadsLoading } = useLeads({ limit: 100 });
+  const { data: businessesData } = useBusinesses({ limit: 1000 });
 
   const top = stats?.top_leads || [];
 
@@ -81,28 +82,22 @@ function Overview() {
           <StatCard
             label="Businesses scanned"
             value={stats?.total_businesses?.toString() || "0"}
-            delta="+18.2%"
-            hint="this week"
             icon={<Radar className="size-4" />}
           />
           <StatCard
             label="Qualified leads"
             value={stats?.high_opportunity?.toString() || "0"}
-            delta="+24"
-            hint="vs last week"
             icon={<Target className="size-4" />}
           />
           <StatCard
-            label="Pipeline value"
+            label="Est. Pipeline value"
             value={formatCurrency(pipelineValue)}
-            delta="+9.4%"
             hint="open deals"
             icon={<TrendingUp className="size-4" />}
           />
           <StatCard
-            label="Reply rate"
-            value="--"
-            hint="Need more data"
+            label="Total Deals Won"
+            value={leadsData?.results?.filter(l => l.status === "won").length.toString() || "0"}
             icon={<Users className="size-4" />}
           />
         </section>
@@ -172,22 +167,25 @@ function Overview() {
               </div>
             ) : (
               <ul className="space-y-3">
-                {pipeline.map((stage, i) => (
+                {pipeline.map((stage, i) => {
+                  const maxStageCount = Math.max(...pipeline.map(s => s.count)) || 1;
+                  const width = (stage.count / maxStageCount) * 100;
+                  return (
                   <li key={stage.stage}>
                     <div className="flex items-baseline justify-between gap-3 text-sm">
                       <span className="truncate font-medium">{stage.stage}</span>
                       <span className="text-numeric shrink-0 text-xs text-muted-foreground">
-                        {stage.count} · {formatCurrency(stage.value)}
+                        {stage.count} · {formatCurrency(stage.value)} (est)
                       </span>
                     </div>
                     <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-muted">
                       <div
                         className="h-full rounded-full bg-primary"
-                        style={{ width: `${100 - i * 18}%`, opacity: 1 - i * 0.15 }}
+                        style={{ width: `${width}%`, opacity: 1 - i * 0.15 }}
                       />
                     </div>
                   </li>
-                ))}
+                )})}
               </ul>
             )}
           </div>
@@ -206,7 +204,9 @@ function Overview() {
               </div>
             ) : (
               <ul className="space-y-4 mt-2">
-                {recentLeads.map((lead) => (
+                {recentLeads.map((lead) => {
+                  const bName = businessesData?.results?.find((b: any) => b.id === lead.business_id)?.name || "Lead";
+                  return (
                   <li key={lead.id} className="flex gap-3">
                     <span
                       className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-primary-soft text-primary"
@@ -215,13 +215,13 @@ function Overview() {
                     </span>
                     <div className="min-w-0">
                       <p className="text-sm leading-snug">
-                        <span className="font-medium">{(lead as any).business_name || "Lead"}</span>{" "}
+                        <span className="font-medium">{bName}</span>{" "}
                         <span className="text-muted-foreground">was discovered via scan</span>
                       </p>
                       <p className="text-[11px] text-muted-foreground uppercase">{lead.status} · {new Date(lead.created_at).toLocaleTimeString()}</p>
                     </div>
                   </li>
-                ))}
+                )})}
               </ul>
             )}
           </div>

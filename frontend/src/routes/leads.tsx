@@ -19,7 +19,7 @@ import { ScoreBadge, StatusPill, WebsiteTag } from "@/components/leadforge-ui";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { formatCurrency, statusMeta, type LeadStatus } from "@/lib/mock-data";
+import { formatCurrency, statusMeta, type LeadStatus } from "@/lib/ui-utils";
 import { cn } from "@/lib/utils";
 import { useLeads, useBusinesses, useLeadDetail, useBusinessDetail } from "@/lib/api-hooks";
 
