@@ -11,7 +11,7 @@ import { SectionHeader, StatCard } from "@/components/leadforge-ui";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useBusinessStats, useCreateBusiness, useCreateLead, useTriggerAnalysis } from "@/lib/api-hooks";
+import { useBusinessStats, useCreateBusiness, useCreateLead, useTriggerAnalysis, useBusinesses } from "@/lib/api-hooks";
 
 export const Route = createFileRoute("/discover")({
   head: () => ({
@@ -44,7 +44,8 @@ const scanSchema = z.object({
 type ScanFormValues = z.infer<typeof scanSchema>;
 
 function Discover() {
-  const { data: stats, isLoading, isError, refetch } = useBusinessStats();
+  const { data: stats, isLoading: statsLoading, isError: statsError, refetch: refetchStats } = useBusinessStats();
+  const { data: businessesData, isLoading: bizLoading, refetch: refetchBiz } = useBusinesses({ limit: 12 });
   const createBusiness = useCreateBusiness();
   const createLead = useCreateLead();
   const triggerAnalysis = useTriggerAnalysis();
@@ -132,7 +133,8 @@ function Discover() {
         description: `Imported ${newLeads} new leads from ${validResults.length} found businesses.`,
       });
       
-      refetch();
+      refetchStats();
+      refetchBiz();
       
     } catch (error: any) {
       toast.error("Scan failed", {
@@ -257,18 +259,18 @@ function Discover() {
           </div>
         </section>
 
-        {isError ? (
+        {statsError ? (
           <div className="flex h-32 items-center justify-center rounded-lg border border-border bg-card p-6 text-center shadow-sm">
             <p className="text-destructive">Failed to load discover stats.</p>
           </div>
-        ) : isLoading ? (
+        ) : statsLoading || bizLoading ? (
           <div className="flex h-32 items-center justify-center rounded-lg border border-border bg-card p-6 shadow-sm">
             <Loader2 className="size-6 animate-spin text-muted-foreground" />
           </div>
         ) : (
           <>
             <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <StatCard label="Scans this month" value="12" delta="+2" hint="vs last month" />
+              <StatCard label="Total Scans" value={(stats?.total_businesses || 0).toString()} hint="lifetime" />
               <StatCard
                 label="Businesses indexed"
                 value={stats?.total_businesses?.toString() || "0"}
@@ -286,42 +288,48 @@ function Discover() {
 
             <section>
               <SectionHeader
-                title="Segments found"
+                title="Discovered Businesses"
                 action={
-                  <Button variant="ghost" size="sm">
-                    <Wand2 className="size-3.5" />
-                    New segment
+                  <Button variant="ghost" size="sm" onClick={() => { refetchStats(); refetchBiz(); }}>
+                    <Radar className="size-3.5 mr-2" />
+                    Refresh
                   </Button>
                 }
               />
-              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                {segments.length > 0 ? (
-                  segments.map((s) => (
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {businessesData?.results && businessesData.results.length > 0 ? (
+                  businessesData.results.map((b) => (
                     <article
-                      key={s.id}
-                      className="panel p-4 transition-colors hover:border-border-strong"
+                      key={b.id}
+                      className="panel p-4 transition-colors hover:border-border-strong flex flex-col"
                     >
-                      <p className="truncate text-sm font-medium">{s.name}</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">{s.region}</p>
-                      <div className="mt-4 flex items-end justify-between">
+                      <div className="flex items-start justify-between">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">{b.name}</p>
+                          <p className="mt-0.5 text-xs text-muted-foreground truncate">{b.category} · {b.city}</p>
+                        </div>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-medium whitespace-nowrap ${b.website ? 'bg-success/15 text-success' : 'bg-destructive/15 text-destructive'}`}>
+                          {b.website ? "Has Website" : "No Website"}
+                        </span>
+                      </div>
+                      <div className="mt-4 flex items-end justify-between pt-3 border-t border-border">
                         <div>
-                          <p className="text-numeric text-xl font-semibold">
-                            {s.found.toLocaleString()}
+                          <p className="text-numeric text-lg font-semibold">
+                            {b.opportunity_score}
                           </p>
-                          <p className="text-[11px] text-muted-foreground">businesses</p>
+                          <p className="text-[11px] text-muted-foreground">score</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-numeric text-sm font-semibold text-primary">
-                            {s.avgScore}
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(b.created_at).toLocaleDateString()}
                           </p>
-                          <p className="text-[11px] text-muted-foreground">avg score</p>
                         </div>
                       </div>
                     </article>
                   ))
                 ) : (
                   <div className="col-span-full py-8 text-center text-sm text-muted-foreground">
-                    No segments found. Run a scan to discover businesses.
+                    No businesses found. Run a scan to discover businesses.
                   </div>
                 )}
               </div>

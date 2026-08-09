@@ -4,6 +4,7 @@ import { apiClient } from "./api";
 // --- Types ---
 export interface BusinessCard {
   id: string;
+  slug: string;
   name: string;
   category: string;
   city: string;

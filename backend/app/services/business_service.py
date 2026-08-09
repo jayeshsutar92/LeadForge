@@ -98,6 +98,10 @@ class BusinessService:
         return len(cards), cards
 
     async def create_business(self, data: BusinessCreate) -> BusinessCard:
+        # Check if it already exists
+        existing = await self.business_repo.get_by_slug(data.slug)
+        if existing:
+            return self._to_card(existing)
         # Convert schema to model
         business = Business(**data.dict())
         created = await self.business_repo.create(business)

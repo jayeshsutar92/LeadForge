@@ -58,7 +58,7 @@ class CRMService:
         # Check if lead already exists for this business
         existing = await self.repo.get_lead_by_business(payload.business_id)
         if existing:
-            raise HTTPException(status_code=400, detail="Lead already exists for this business")
+            return existing
 
         lead = Lead(
             business_id=payload.business_id,

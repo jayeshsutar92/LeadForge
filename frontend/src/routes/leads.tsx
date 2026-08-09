@@ -61,8 +61,7 @@ function LeadsPage() {
   const { data: selectedBizDetail, isLoading: bizDetailLoading } = useBusinessDetail(
     businessesData?.results
       .find((b) => b.id === selectedLeadDetail?.business_id)
-      ?.name.toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-") || null,
+      ?.slug || null,
   );
 
   const rows = useMemo(() => {
