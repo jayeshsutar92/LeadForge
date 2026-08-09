@@ -26,7 +26,7 @@ function Analytics() {
     data: leadsData,
     isLoading: leadsLoading,
     isError: leadsError,
-  } = useLeads({ limit: 1000 });
+  } = useLeads({ limit: 100 });
 
   const { data: statsData } = useBusinessStats();
 

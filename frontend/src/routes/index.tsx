@@ -31,7 +31,7 @@ export const Route = createFileRoute("/")({
 function Overview() {
   const { data: stats, isLoading: statsLoading, isError: statsError } = useBusinessStats();
   const { data: leadsData, isLoading: leadsLoading } = useLeads({ limit: 100 });
-  const { data: businessesData } = useBusinesses({ limit: 1000 });
+  const { data: businessesData } = useBusinesses({ limit: 100 });
 
   const top = stats?.top_leads || [];
 
