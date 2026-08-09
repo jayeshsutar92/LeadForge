@@ -59,9 +59,7 @@ function LeadsPage() {
 
   const { data: selectedLeadDetail, isLoading: leadDetailLoading } = useLeadDetail(selectedLeadId);
   const { data: selectedBizDetail, isLoading: bizDetailLoading } = useBusinessDetail(
-    businessesData?.results
-      .find((b) => b.id === selectedLeadDetail?.business_id)
-      ?.slug || null,
+    businessesData?.results.find((b) => b.id === selectedLeadDetail?.business_id)?.slug || null,
   );
 
   const rows = useMemo(() => {
@@ -217,9 +215,7 @@ function LeadsPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <WebsiteTag
-                          state={lead.business.website ? "has_website" : "missing_website"}
-                        />
+                        <WebsiteTag state={lead.business.website ? "modern" : "none"} />
                       </td>
                       <td className="px-4 py-3">
                         <StatusPill status={lead.status as LeadStatus} />

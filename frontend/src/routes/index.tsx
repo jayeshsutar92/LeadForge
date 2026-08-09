@@ -56,7 +56,7 @@ function Overview() {
   }, [leadsData]);
 
   const pipelineValue = pipeline.reduce((acc, p) => acc + p.value, 0);
-  
+
   const recentLeads = useMemo(() => {
     if (!leadsData?.results) return [];
     return [...leadsData.results]
@@ -97,7 +97,7 @@ function Overview() {
           />
           <StatCard
             label="Total Deals Won"
-            value={leadsData?.results?.filter(l => l.status === "won").length.toString() || "0"}
+            value={leadsData?.results?.filter((l) => l.status === "won")?.length.toString() || "0"}
             icon={<Users className="size-4" />}
           />
         </section>
@@ -139,7 +139,7 @@ function Overview() {
                     </div>
                     <div className="flex shrink-0 items-center gap-3">
                       <span className="hidden sm:block">
-                        <WebsiteTag state={lead.website ? "has_website" : "missing_website"} />
+                        <WebsiteTag state={lead.website ? "modern" : "none"} />
                       </span>
                       <span className="hidden md:block">
                         <StatusPill status="new" />
@@ -168,24 +168,25 @@ function Overview() {
             ) : (
               <ul className="space-y-3">
                 {pipeline.map((stage, i) => {
-                  const maxStageCount = Math.max(...pipeline.map(s => s.count)) || 1;
+                  const maxStageCount = Math.max(...pipeline.map((s) => s.count)) || 1;
                   const width = (stage.count / maxStageCount) * 100;
                   return (
-                  <li key={stage.stage}>
-                    <div className="flex items-baseline justify-between gap-3 text-sm">
-                      <span className="truncate font-medium">{stage.stage}</span>
-                      <span className="text-numeric shrink-0 text-xs text-muted-foreground">
-                        {stage.count} · {formatCurrency(stage.value)} (est)
-                      </span>
-                    </div>
-                    <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-muted">
-                      <div
-                        className="h-full rounded-full bg-primary"
-                        style={{ width: `${width}%`, opacity: 1 - i * 0.15 }}
-                      />
-                    </div>
-                  </li>
-                )})}
+                    <li key={stage.stage}>
+                      <div className="flex items-baseline justify-between gap-3 text-sm">
+                        <span className="truncate font-medium">{stage.stage}</span>
+                        <span className="text-numeric shrink-0 text-xs text-muted-foreground">
+                          {stage.count} · {formatCurrency(stage.value)} (est)
+                        </span>
+                      </div>
+                      <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-muted">
+                        <div
+                          className="h-full rounded-full bg-primary"
+                          style={{ width: `${width}%`, opacity: 1 - i * 0.15 }}
+                        />
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>
@@ -205,23 +206,26 @@ function Overview() {
             ) : (
               <ul className="space-y-4 mt-2">
                 {recentLeads.map((lead) => {
-                  const bName = businessesData?.results?.find((b: any) => b.id === lead.business_id)?.name || "Lead";
+                  const bName =
+                    businessesData?.results?.find((b: any) => b.id === lead.business_id)?.name ||
+                    "Lead";
                   return (
-                  <li key={lead.id} className="flex gap-3">
-                    <span
-                      className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-primary-soft text-primary"
-                    >
-                      <Sparkles className="size-3.5" />
-                    </span>
-                    <div className="min-w-0">
-                      <p className="text-sm leading-snug">
-                        <span className="font-medium">{bName}</span>{" "}
-                        <span className="text-muted-foreground">was discovered via scan</span>
-                      </p>
-                      <p className="text-[11px] text-muted-foreground uppercase">{lead.status} · {new Date(lead.created_at).toLocaleTimeString()}</p>
-                    </div>
-                  </li>
-                )})}
+                    <li key={lead.id} className="flex gap-3">
+                      <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-primary-soft text-primary">
+                        <Sparkles className="size-3.5" />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-sm leading-snug">
+                          <span className="font-medium">{bName}</span>{" "}
+                          <span className="text-muted-foreground">was discovered via scan</span>
+                        </p>
+                        <p className="text-[11px] text-muted-foreground uppercase">
+                          {lead.status} · {new Date(lead.created_at).toLocaleTimeString()}
+                        </p>
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>

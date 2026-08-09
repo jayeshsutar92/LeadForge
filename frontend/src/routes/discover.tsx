@@ -11,7 +11,13 @@ import { SectionHeader, StatCard } from "@/components/leadforge-ui";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useBusinessStats, useCreateBusiness, useCreateLead, useTriggerAnalysis, useBusinesses } from "@/lib/api-hooks";
+import {
+  useBusinessStats,
+  useCreateBusiness,
+  useCreateLead,
+  useTriggerAnalysis,
+  useBusinesses,
+} from "@/lib/api-hooks";
 
 export const Route = createFileRoute("/discover")({
   head: () => ({
@@ -44,17 +50,31 @@ const scanSchema = z.object({
 type ScanFormValues = z.infer<typeof scanSchema>;
 
 function Discover() {
-  const { data: stats, isLoading: statsLoading, isError: statsError, refetch: refetchStats } = useBusinessStats();
-  const { data: businessesData, isLoading: bizLoading, refetch: refetchBiz } = useBusinesses({ limit: 12 });
+  const {
+    data: stats,
+    isLoading: statsLoading,
+    isError: statsError,
+    refetch: refetchStats,
+  } = useBusinessStats();
+  const {
+    data: businessesData,
+    isLoading: bizLoading,
+    refetch: refetchBiz,
+  } = useBusinesses({ limit: 12 });
   const createBusiness = useCreateBusiness();
   const createLead = useCreateLead();
   const triggerAnalysis = useTriggerAnalysis();
-  
-  const [scanState, setScanState] = useState<{ active: boolean; message: string; found: number; processed: number }>({
+
+  const [scanState, setScanState] = useState<{
+    active: boolean;
+    message: string;
+    found: number;
+    processed: number;
+  }>({
     active: false,
     message: "",
     found: 0,
-    processed: 0
+    processed: 0,
   });
 
   const {
@@ -70,36 +90,49 @@ function Discover() {
   });
 
   const onSubmit = async (data: ScanFormValues) => {
-    setScanState({ active: true, message: "Querying external business database...", found: 0, processed: 0 });
-    
+    setScanState({
+      active: true,
+      message: "Querying external business database...",
+      found: 0,
+      processed: 0,
+    });
+
     try {
       // Fetch from Nominatim OpenStreetMap
       const queryStr = encodeURIComponent(`${data.query} in ${data.region}`);
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${queryStr}&format=json&extratags=1&addressdetails=1&limit=10`, {
-        headers: { 'User-Agent': 'LeadForgeApp/1.0' }
-      });
-      
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${queryStr}&format=json&extratags=1&addressdetails=1&limit=10`,
+        {
+          headers: { "User-Agent": "LeadForgeApp/1.0" },
+        },
+      );
+
       if (!res.ok) throw new Error(`API error: ${res.status}`);
-      
+
       const results = await res.json();
       const validResults = results.filter((r: any) => r.name);
-      
-      setScanState(prev => ({ ...prev, message: `Found ${validResults.length} businesses, processing...`, found: validResults.length }));
-      
+
+      setScanState((prev) => ({
+        ...prev,
+        message: `Found ${validResults.length} businesses, processing...`,
+        found: validResults.length,
+      }));
+
       let newLeads = 0;
-      
+
       for (const place of validResults) {
         try {
           const name = place.name;
           // Generate unique slug
-          const slug = `${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${place.place_id}`;
+          const slug = `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${place.place_id}`;
           const extratags = place.extratags || {};
           const address = place.address || {};
-          
-          const website = extratags.website || extratags['contact:website'] || extratags.url || '';
-          const city = address.city || address.town || address.village || address.county || data.region;
+
+          const website = extratags.website || extratags["contact:website"] || extratags.url || "";
+          const city =
+            address.city || address.town || address.village || address.county || data.region;
           const country = address.country || "Unknown";
-          
+
           // Create business
           const biz = await createBusiness.mutateAsync({
             name,
@@ -108,40 +141,39 @@ function Discover() {
             city,
             country,
             website,
-            bio: `Discovered via OpenStreetMap. Category: ${place.type || 'unknown'}`
+            bio: `Discovered via OpenStreetMap. Category: ${place.type || "unknown"}`,
           });
-          
+
           // Create lead
           await createLead.mutateAsync({
             business_id: biz.id,
-            source: 'Discovery Scan',
-            notes: `Discovered scanning for ${data.query} in ${data.region}`
+            source: "Discovery Scan",
+            notes: `Discovered scanning for ${data.query} in ${data.region}`,
           });
-          
+
           // Trigger intelligence
           triggerAnalysis.mutate(biz.slug);
-          
+
           newLeads++;
         } catch (e: any) {
           console.warn("Failed to process business:", place.name, e);
         }
-        
-        setScanState(prev => ({ ...prev, processed: prev.processed + 1 }));
+
+        setScanState((prev) => ({ ...prev, processed: prev.processed + 1 }));
       }
-      
+
       toast.success("Scan completed successfully", {
         description: `Imported ${newLeads} new leads from ${validResults.length} found businesses.`,
       });
-      
+
       refetchStats();
       refetchBiz();
-      
     } catch (error: any) {
       toast.error("Scan failed", {
         description: error.message || "An unexpected error occurred during the scan.",
       });
     } finally {
-      setScanState(prev => ({ ...prev, active: false }));
+      setScanState((prev) => ({ ...prev, active: false }));
     }
   };
 
@@ -213,8 +245,13 @@ function Discover() {
                 <p className="text-[11px] font-medium text-destructive">{errors.region.message}</p>
               )}
             </div>
-            <Button size="lg" className="h-10 md:mt-[22px]" type="submit" disabled={isSubmitting || scanState.active}>
-              {(isSubmitting || scanState.active) ? (
+            <Button
+              size="lg"
+              className="h-10 md:mt-[22px]"
+              type="submit"
+              disabled={isSubmitting || scanState.active}
+            >
+              {isSubmitting || scanState.active ? (
                 <>
                   <Loader2 className="size-4 animate-spin" />
                   Scanning...
@@ -227,7 +264,7 @@ function Discover() {
               )}
             </Button>
           </form>
-          
+
           {scanState.active && (
             <div className="mt-4 flex items-center justify-between rounded-md bg-secondary/50 px-4 py-2 text-sm text-secondary-foreground">
               <div className="flex items-center gap-2">
@@ -241,7 +278,7 @@ function Discover() {
               )}
             </div>
           )}
-          
+
           <div className="mt-4 flex flex-wrap gap-1.5">
             {criteria.map((c, i) => (
               <button
@@ -270,7 +307,11 @@ function Discover() {
         ) : (
           <>
             <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <StatCard label="Total Scans" value={(stats?.total_businesses || 0).toString()} hint="lifetime" />
+              <StatCard
+                label="Total Scans"
+                value={(stats?.total_businesses || 0).toString()}
+                hint="lifetime"
+              />
               <StatCard
                 label="Businesses indexed"
                 value={stats?.total_businesses?.toString() || "0"}
@@ -290,7 +331,14 @@ function Discover() {
               <SectionHeader
                 title="Discovered Businesses"
                 action={
-                  <Button variant="ghost" size="sm" onClick={() => { refetchStats(); refetchBiz(); }}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      refetchStats();
+                      refetchBiz();
+                    }}
+                  >
                     <Radar className="size-3.5 mr-2" />
                     Refresh
                   </Button>
@@ -306,9 +354,13 @@ function Discover() {
                       <div className="flex items-start justify-between">
                         <div className="min-w-0">
                           <p className="truncate text-sm font-medium">{b.name}</p>
-                          <p className="mt-0.5 text-xs text-muted-foreground truncate">{b.category} · {b.city}</p>
+                          <p className="mt-0.5 text-xs text-muted-foreground truncate">
+                            {b.category} · {b.city}
+                          </p>
                         </div>
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-medium whitespace-nowrap ${b.website ? 'bg-success/15 text-success' : 'bg-destructive/15 text-destructive'}`}>
+                        <span
+                          className={`px-2 py-0.5 rounded text-[10px] font-medium whitespace-nowrap ${b.website ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"}`}
+                        >
                           {b.website ? "Has Website" : "No Website"}
                         </span>
                       </div>

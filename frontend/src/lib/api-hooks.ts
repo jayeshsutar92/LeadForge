@@ -98,8 +98,6 @@ export const useCreateLead = () => {
   });
 };
 
-
-
 export const useLeadDetail = (leadId: string | null) => {
   return useQuery({
     queryKey: ["leads", leadId],
@@ -167,7 +165,9 @@ export const useGenerateOpportunity = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ slug, biId }: { slug: string; biId: string }) => {
-      const res = await apiClient.post(`/businesses/${slug}/intelligence/${biId}/opportunity/generate`);
+      const res = await apiClient.post(
+        `/businesses/${slug}/intelligence/${biId}/opportunity/generate`,
+      );
       return res.data;
     },
     onSuccess: (data, { slug, biId }) => {
@@ -181,7 +181,9 @@ export const useGenerateProposal = () => {
   return useMutation({
     mutationFn: async ({ slug, opportunityId }: { slug: string; opportunityId: string }) => {
       const res = await apiClient.post(
-        `/businesses/${slug}/opportunity/${opportunityId}/proposal/generate`, null, { params: { template_type: 'standard' } }
+        `/businesses/${slug}/opportunity/${opportunityId}/proposal/generate`,
+        null,
+        { params: { template_type: "standard" } },
       );
       return res.data;
     },

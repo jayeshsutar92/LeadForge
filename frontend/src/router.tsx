@@ -29,7 +29,7 @@ export function getRouter() {
   });
 
   return router;
-};
+}
 
 // Register the router instance for type safety
 declare module "@tanstack/react-router" {
