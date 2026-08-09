@@ -11,7 +11,7 @@ import {
   WebsiteTag,
 } from "@/components/leadforge-ui";
 import { Button } from "@/components/ui/button";
-import { formatCurrency, weeklyScans, activity, type LeadStatus } from "@/lib/mock-data";
+import { formatCurrency, type LeadStatus } from "@/lib/mock-data";
 import { useBusinessStats, useLeads } from "@/lib/api-hooks";
 
 export const Route = createFileRoute("/")({
@@ -27,8 +27,6 @@ export const Route = createFileRoute("/")({
   }),
   component: Overview,
 });
-
-const maxScan = Math.max(...weeklyScans.map((d) => d.scanned));
 
 function Overview() {
   const { data: stats, isLoading: statsLoading, isError: statsError } = useBusinessStats();
@@ -47,8 +45,6 @@ function Overview() {
 
     return stages.map((s) => {
       const stageLeads = leadsData.results.filter((l) => l.status === s.key);
-      // We don't have business opportunity_score in LeadResponse easily without joining, so we just estimate value
-      // or set it to 0 if we can't join. But we have top_leads from stats.
       const count = stageLeads.length;
       return {
         stage: s.stage,
@@ -59,6 +55,13 @@ function Overview() {
   }, [leadsData]);
 
   const pipelineValue = pipeline.reduce((acc, p) => acc + p.value, 0);
+  
+  const recentLeads = useMemo(() => {
+    if (!leadsData?.results) return [];
+    return [...leadsData.results]
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, 5);
+  }, [leadsData]);
 
   return (
     <AppShell
@@ -98,78 +101,10 @@ function Overview() {
           />
           <StatCard
             label="Reply rate"
-            value="24.1%"
-            delta="+3.1pt"
-            hint="all sequences"
+            value="--"
+            hint="Need more data"
             icon={<Users className="size-4" />}
           />
-        </section>
-
-        <section className="grid gap-4 xl:grid-cols-[1.6fr_1fr]">
-          <div className="panel p-5">
-            <SectionHeader
-              title="Scan volume & qualification"
-              action={<span className="text-xs text-muted-foreground">Last 7 days</span>}
-            />
-            <div className="flex h-52 items-end gap-3">
-              {weeklyScans.map((d) => (
-                <div key={d.day} className="flex h-full min-w-0 flex-1 flex-col items-center gap-2">
-                  <div className="flex w-full flex-1 items-end justify-center gap-1">
-                    <div
-                      className="w-1/2 rounded-t-md bg-muted"
-                      style={{ height: `${(d.scanned / maxScan) * 100}%` }}
-                      title={`${d.scanned} scanned`}
-                    />
-                    <div
-                      className="w-1/2 rounded-t-md bg-primary"
-                      style={{ height: `${(d.qualified / maxScan) * 100}%` }}
-                      title={`${d.qualified} qualified`}
-                    />
-                  </div>
-                  <span className="text-[11px] text-muted-foreground">{d.day}</span>
-                </div>
-              ))}
-            </div>
-            <div className="mt-4 flex gap-4 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1.5">
-                <span className="size-2 rounded-sm bg-muted" /> Scanned
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="size-2 rounded-sm bg-primary" /> Qualified
-              </span>
-            </div>
-          </div>
-
-          <div className="panel p-5">
-            <SectionHeader
-              title="Pipeline"
-              action={<span className="text-xs text-muted-foreground">By stage</span>}
-            />
-            {leadsLoading ? (
-              <div className="flex h-48 items-center justify-center">
-                <Loader2 className="size-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : (
-              <ul className="space-y-3">
-                {pipeline.map((stage, i) => (
-                  <li key={stage.stage}>
-                    <div className="flex items-baseline justify-between gap-3 text-sm">
-                      <span className="truncate font-medium">{stage.stage}</span>
-                      <span className="text-numeric shrink-0 text-xs text-muted-foreground">
-                        {stage.count} · {formatCurrency(stage.value)}
-                      </span>
-                    </div>
-                    <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-muted">
-                      <div
-                        className="h-full rounded-full bg-primary"
-                        style={{ width: `${100 - i * 18}%`, opacity: 1 - i * 0.15 }}
-                      />
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
         </section>
 
         <section className="grid gap-4 xl:grid-cols-[1.6fr_1fr]">
@@ -223,29 +158,72 @@ function Overview() {
           </div>
 
           <div className="panel p-5">
-            <SectionHeader title="Activity" />
-            <ul className="space-y-4">
-              {activity.map((item) => (
-                <li key={item.id} className="flex gap-3">
-                  <span
-                    className={
-                      item.kind === "ai"
-                        ? "mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-primary-soft text-primary"
-                        : "mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-muted text-muted-foreground"
-                    }
-                  >
-                    <Sparkles className="size-3.5" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-sm leading-snug">
-                      <span className="font-medium">{item.actor}</span>{" "}
-                      <span className="text-muted-foreground">{item.action}</span>
-                    </p>
-                    <p className="text-[11px] text-muted-foreground">{item.time}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <SectionHeader
+              title="Pipeline"
+              action={<span className="text-xs text-muted-foreground">By stage</span>}
+            />
+            {leadsLoading ? (
+              <div className="flex h-48 items-center justify-center">
+                <Loader2 className="size-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : pipeline.length === 0 ? (
+              <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">
+                No pipeline data
+              </div>
+            ) : (
+              <ul className="space-y-3">
+                {pipeline.map((stage, i) => (
+                  <li key={stage.stage}>
+                    <div className="flex items-baseline justify-between gap-3 text-sm">
+                      <span className="truncate font-medium">{stage.stage}</span>
+                      <span className="text-numeric shrink-0 text-xs text-muted-foreground">
+                        {stage.count} · {formatCurrency(stage.value)}
+                      </span>
+                    </div>
+                    <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-primary"
+                        style={{ width: `${100 - i * 18}%`, opacity: 1 - i * 0.15 }}
+                      />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </section>
+
+        <section className="grid gap-4 xl:grid-cols-2">
+          <div className="panel p-5">
+            <SectionHeader title="Recent Activity" />
+            {leadsLoading ? (
+              <div className="flex h-32 items-center justify-center">
+                <Loader2 className="size-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : recentLeads.length === 0 ? (
+              <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
+                No recent activity.
+              </div>
+            ) : (
+              <ul className="space-y-4 mt-2">
+                {recentLeads.map((lead) => (
+                  <li key={lead.id} className="flex gap-3">
+                    <span
+                      className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-primary-soft text-primary"
+                    >
+                      <Sparkles className="size-3.5" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-sm leading-snug">
+                        <span className="font-medium">{(lead as any).business_name || "Lead"}</span>{" "}
+                        <span className="text-muted-foreground">was discovered via scan</span>
+                      </p>
+                      <p className="text-[11px] text-muted-foreground uppercase">{lead.status} · {new Date(lead.created_at).toLocaleTimeString()}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </section>
       </div>

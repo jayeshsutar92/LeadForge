@@ -1,11 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { FileText, Sparkles } from "lucide-react";
+import { FileText, Sparkles, Loader2 } from "lucide-react";
+import { useMemo } from "react";
 
 import { AppShell } from "@/components/app-shell";
 import { StatCard } from "@/components/leadforge-ui";
 import { Button } from "@/components/ui/button";
-import { formatCurrency, proposals } from "@/lib/mock-data";
+import { formatCurrency } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
+import { useLeads } from "@/lib/api-hooks";
 
 export const Route = createFileRoute("/proposals")({
   head: () => ({
@@ -16,28 +18,36 @@ export const Route = createFileRoute("/proposals")({
         content:
           "AI-drafted proposals tailored to each business opportunity, from draft to accepted.",
       },
-      { property: "og:title", content: "Proposals — LeadForge" },
-      {
-        property: "og:description",
-        content: "AI-drafted proposals tailored to each business opportunity.",
-      },
     ],
   }),
   component: Proposals,
 });
 
 const statusTone: Record<string, string> = {
-  Draft: "bg-muted text-muted-foreground border-border",
-  Sent: "bg-info/15 text-info border-info/25",
-  "In review": "bg-warning/15 text-warning border-warning/25",
-  Accepted: "bg-success/15 text-success border-success/25",
+  qualified: "bg-muted text-muted-foreground border-border",
+  contacted: "bg-info/15 text-info border-info/25",
+  negotiating: "bg-warning/15 text-warning border-warning/25",
+  won: "bg-success/15 text-success border-success/25",
 };
 
 function Proposals() {
+  const { data: leadsData, isLoading, isError } = useLeads({ limit: 100 });
+
+  const activeProposals = useMemo(() => {
+    if (!leadsData?.results) return [];
+    return leadsData.results.filter(
+      (l) => l.status === "qualified" || l.status === "negotiating" || l.status === "won"
+    ).sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+  }, [leadsData]);
+
+  const activeCount = activeProposals.length;
+  // Estimate value as opportunity score * 120 (same logic as in Leads)
+  const totalValue = activeProposals.reduce((sum, lead) => sum + ((lead as any).opportunity_score || 70) * 120, 0);
+
   return (
     <AppShell
       title="Proposals"
-      description="4 active proposals · $54,900 in play"
+      description={`${activeCount} active opportunities · ${formatCurrency(totalValue)} in play`}
       actions={
         <Button>
           <Sparkles className="size-4" />
@@ -48,56 +58,73 @@ function Proposals() {
       <div className="space-y-6">
         <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
-            label="Proposals sent"
-            value="46"
-            delta="+8"
-            hint="this quarter"
+            label="Proposals active"
+            value={activeCount.toString()}
             icon={<FileText className="size-4" />}
           />
-          <StatCard label="Acceptance rate" value="31%" delta="+4pt" />
-          <StatCard label="Avg. deal size" value={formatCurrency(11200)} />
+          <StatCard label="Win rate" value="--" hint="Need more data" />
+          <StatCard label="Pipeline value" value={formatCurrency(totalValue)} />
           <StatCard label="Avg. draft time" value="42s" hint="AI generated" />
         </section>
 
-        <section className="grid gap-3 md:grid-cols-2">
-          {proposals.map((p) => (
-            <article
-              key={p.id}
-              className="panel flex flex-col p-5 transition-colors hover:border-border-strong"
-            >
-              <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
-                <div className="min-w-0">
-                  <p className="truncate text-xs text-muted-foreground">{p.lead}</p>
-                  <h2 className="mt-0.5 truncate text-base font-semibold">{p.title}</h2>
-                </div>
-                <span
-                  className={cn(
-                    "shrink-0 rounded-full border px-2.5 py-0.5 text-[11px] font-medium",
-                    statusTone[p.status] ?? statusTone["Draft"],
-                  )}
+        {isError ? (
+          <div className="flex h-48 items-center justify-center text-sm text-destructive">
+            Failed to load proposals data.
+          </div>
+        ) : isLoading ? (
+          <div className="flex h-48 items-center justify-center">
+            <Loader2 className="size-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : activeProposals.length === 0 ? (
+          <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">
+            No active proposals found.
+          </div>
+        ) : (
+          <section className="grid gap-3 md:grid-cols-2">
+            {activeProposals.map((lead) => {
+              const estimatedValue = ((lead as any).opportunity_score || 70) * 120;
+              return (
+                <article
+                  key={lead.id}
+                  className="panel flex flex-col p-5 transition-colors hover:border-border-strong"
                 >
-                  {p.status}
-                </span>
-              </div>
+                  <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-xs text-muted-foreground">Lead ID: {lead.id.substring(0,8)}</p>
+                      <h2 className="mt-0.5 truncate text-base font-semibold">
+                        {(lead as any).business_name || "Business Opportunity"}
+                      </h2>
+                    </div>
+                    <span
+                      className={cn(
+                        "shrink-0 rounded-full border px-2.5 py-0.5 text-[11px] font-medium uppercase",
+                        statusTone[lead.status] ?? statusTone["qualified"],
+                      )}
+                    >
+                      {lead.status}
+                    </span>
+                  </div>
 
-              <p className="mt-4 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                <Sparkles className="size-3 text-primary" /> {p.model} · updated {p.updated}
-              </p>
+                  <p className="mt-4 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <Sparkles className="size-3 text-primary" /> Generated by AI · updated {new Date(lead.updated_at).toLocaleDateString()}
+                  </p>
 
-              <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
-                <p className="text-numeric text-lg font-semibold">{formatCurrency(p.value)}</p>
-                <div className="flex gap-2">
-                  <Button variant="ghost" size="sm">
-                    Preview
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    Edit
-                  </Button>
-                </div>
-              </div>
-            </article>
-          ))}
-        </section>
+                  <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
+                    <p className="text-numeric text-lg font-semibold">{formatCurrency(estimatedValue)}</p>
+                    <div className="flex gap-2">
+                      <Button variant="ghost" size="sm">
+                        Preview
+                      </Button>
+                      <Button variant="outline" size="sm">
+                        Edit
+                      </Button>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </section>
+        )}
       </div>
     </AppShell>
   );

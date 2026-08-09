@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Mail, MessageSquare, Plus, Sparkles } from "lucide-react";
+import { Mail, MessageSquare, Plus, Sparkles, Loader2 } from "lucide-react";
+import { useMemo } from "react";
 
 import { AppShell } from "@/components/app-shell";
 import { SectionHeader, StatCard } from "@/components/leadforge-ui";
 import { Button } from "@/components/ui/button";
-import { sequences } from "@/lib/mock-data";
+import { useLeads } from "@/lib/api-hooks";
 
 export const Route = createFileRoute("/outreach")({
   head: () => ({
@@ -14,158 +15,92 @@ export const Route = createFileRoute("/outreach")({
         name: "description",
         content: "Track sequences, replies, and follow-ups across every lead you contact.",
       },
-      { property: "og:title", content: "Outreach — LeadForge" },
-      {
-        property: "og:description",
-        content: "Track sequences, replies, and follow-ups across every lead you contact.",
-      },
     ],
   }),
   component: Outreach,
 });
 
-const inbox = [
-  {
-    id: 1,
-    from: "Harborline Logistics",
-    preview: "Interesting — can you send pricing for the quote portal?",
-    time: "2h",
-    unread: true,
-  },
-  {
-    id: 2,
-    from: "Aperture Legal Partners",
-    preview: "We reviewed the audit. Let's schedule a call Thursday.",
-    time: "5h",
-    unread: true,
-  },
-  {
-    id: 3,
-    from: "Cedar & Co. Roasters",
-    preview: "Not right now, revisit us in Q4 please.",
-    time: "1d",
-    unread: false,
-  },
-  {
-    id: 4,
-    from: "Vantage Roofing Group",
-    preview: "Who handles this internally? Forwarding to our ops lead.",
-    time: "2d",
-    unread: false,
-  },
-];
-
 function Outreach() {
+  const { data: leadsData, isLoading, isError } = useLeads({ limit: 100 });
+
+  const contactedLeads = useMemo(() => {
+    if (!leadsData?.results) return [];
+    return leadsData.results.filter(
+      (l) => l.status === "contacted" || l.status === "negotiating" || l.status === "qualified"
+    ).sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+  }, [leadsData]);
+
+  const activeCount = contactedLeads.length;
+
   return (
     <AppShell
       title="Outreach"
-      description="4 sequences running · 423 leads in flight"
+      description={`${activeCount} leads actively in pipeline`}
       actions={
         <Button>
           <Plus className="size-4" />
-          New sequence
+          Start campaign
         </Button>
       }
     >
       <div className="space-y-6">
         <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
-            label="Emails sent"
-            value="1,942"
-            delta="+312"
-            hint="this week"
-            icon={<Mail className="size-4" />}
-          />
-          <StatCard label="Open rate" value="58.4%" delta="+1.8pt" />
-          <StatCard label="Reply rate" value="24.1%" delta="+3.1pt" />
-          <StatCard
-            label="Meetings booked"
-            value="17"
-            delta="+5"
+            label="Active conversations"
+            value={activeCount.toString()}
             icon={<MessageSquare className="size-4" />}
+          />
+          <StatCard label="Response rate" value="--" hint="Need more data" />
+          <StatCard label="Qualified" value={leadsData?.results.filter(l => l.status === "qualified").length.toString() || "0"} />
+          <StatCard
+            label="Total leads"
+            value={leadsData?.total?.toString() || "0"}
+            icon={<Mail className="size-4" />}
           />
         </section>
 
-        <section className="grid gap-4 xl:grid-cols-[1.5fr_1fr]">
-          <div className="panel overflow-hidden">
-            <div className="border-b border-border px-5 py-3.5">
-              <h2 className="text-sm font-semibold">Sequences</h2>
+        <section className="panel p-5">
+          <SectionHeader
+            title="Active Outreach"
+            action={<span className="text-xs text-muted-foreground">{activeCount} leads</span>}
+          />
+          {isError ? (
+            <div className="flex h-48 items-center justify-center text-sm text-destructive">
+              Failed to load outreach data.
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[620px] text-sm">
-                <thead>
-                  <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                    <th scope="col" className="px-5 py-2.5 font-medium">
-                      Sequence
-                    </th>
-                    <th scope="col" className="px-5 py-2.5 font-medium">
-                      Channel
-                    </th>
-                    <th scope="col" className="px-5 py-2.5 text-right font-medium">
-                      Active
-                    </th>
-                    <th scope="col" className="px-5 py-2.5 text-right font-medium">
-                      Open
-                    </th>
-                    <th scope="col" className="px-5 py-2.5 text-right font-medium">
-                      Reply
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sequences.map((s) => (
-                    <tr
-                      key={s.id}
-                      className="border-b border-border/70 last:border-0 hover:bg-accent/40"
-                    >
-                      <td className="px-5 py-3">
-                        <p className="truncate font-medium">{s.name}</p>
-                        <p className="text-[11px] text-muted-foreground">
-                          <span
-                            className={
-                              s.status === "Running" ? "text-primary" : "text-muted-foreground"
-                            }
-                          >
-                            ●
-                          </span>{" "}
-                          {s.status}
-                        </p>
-                      </td>
-                      <td className="px-5 py-3 text-xs text-muted-foreground">{s.channel}</td>
-                      <td className="text-numeric px-5 py-3 text-right text-xs">{s.active}</td>
-                      <td className="text-numeric px-5 py-3 text-right text-xs">{s.openRate}%</td>
-                      <td className="text-numeric px-5 py-3 text-right text-xs font-semibold text-primary">
-                        {s.replyRate}%
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          ) : isLoading ? (
+            <div className="flex h-48 items-center justify-center">
+              <Loader2 className="size-6 animate-spin text-muted-foreground" />
             </div>
-          </div>
-
-          <div className="panel p-5">
-            <SectionHeader
-              title="Replies"
-              action={<span className="text-xs text-muted-foreground">2 unread</span>}
-            />
-            <ul className="space-y-3">
-              {inbox.map((m) => (
-                <li key={m.id} className="rounded-lg border border-border bg-surface-raised p-3">
-                  <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
-                    <p className="truncate text-sm font-medium">{m.from}</p>
-                    <span className="shrink-0 text-[11px] text-muted-foreground">{m.time}</span>
-                  </div>
-                  <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{m.preview}</p>
-                  {m.unread ? (
-                    <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-primary">
-                      <Sparkles className="size-3" /> AI reply suggested
+          ) : contactedLeads.length === 0 ? (
+            <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">
+              No active outreach at the moment.
+            </div>
+          ) : (
+            <ul className="mt-4 space-y-3">
+              {contactedLeads.map((lead) => (
+                <li key={lead.id} className="rounded-lg border border-border bg-surface-raised p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium">Lead ID: {lead.id.substring(0, 8)}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">Status: <span className="uppercase text-primary">{lead.status}</span></p>
+                    </div>
+                    <span className="shrink-0 text-[11px] text-muted-foreground">
+                      Updated {new Date(lead.updated_at).toLocaleDateString()}
                     </span>
-                  ) : null}
+                  </div>
+                  <div className="mt-3 flex items-center justify-between border-t border-border/50 pt-3">
+                    <p className="text-xs text-muted-foreground line-clamp-1">
+                      {lead.notes || "No notes available."}
+                    </p>
+                    <Button variant="ghost" size="sm" className="h-7 text-xs">
+                      View details
+                    </Button>
+                  </div>
                 </li>
               ))}
             </ul>
-          </div>
+          )}
         </section>
       </div>
     </AppShell>

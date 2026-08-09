@@ -71,6 +71,34 @@ export const useLeads = (params?: any) => {
   });
 };
 
+export const useCreateBusiness = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiClient.post("/businesses", data);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["businesses"] });
+    },
+  });
+};
+
+export const useCreateLead = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiClient.post("/crm/leads", data);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+    },
+  });
+};
+
+
+
 export const useLeadDetail = (leadId: string | null) => {
   return useQuery({
     queryKey: ["leads", leadId],

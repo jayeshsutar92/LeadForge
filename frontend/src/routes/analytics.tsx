@@ -4,8 +4,8 @@ import { Loader2 } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
 import { SectionHeader, StatCard } from "@/components/leadforge-ui";
-import { formatCurrency, weeklyScans } from "@/lib/mock-data";
-import { useLeads } from "@/lib/api-hooks";
+import { formatCurrency } from "@/lib/mock-data";
+import { useLeads, useBusinessStats } from "@/lib/api-hooks";
 
 export const Route = createFileRoute("/analytics")({
   head: () => ({
@@ -21,21 +21,14 @@ export const Route = createFileRoute("/analytics")({
   component: Analytics,
 });
 
-const sources = [
-  { name: "No-website scans", share: 42 },
-  { name: "Broken site alerts", share: 26 },
-  { name: "Outdated design", share: 19 },
-  { name: "Referrals", share: 13 },
-];
-
-const maxScan = Math.max(...weeklyScans.map((d) => d.scanned));
-
 function Analytics() {
   const {
     data: leadsData,
     isLoading: leadsLoading,
     isError: leadsError,
   } = useLeads({ limit: 1000 });
+  
+  const { data: statsData } = useBusinessStats();
 
   const pipeline = useMemo(() => {
     if (!leadsData?.results) return [];
@@ -56,9 +49,11 @@ function Analytics() {
   // Aggregate stats from pipeline
   const wonCount = pipeline.find((p) => p.stage === "Won")?.count || 0;
   const newCount = pipeline.find((p) => p.stage === "New")?.count || 0;
+  
+  const totalLeads = leadsData?.total || 0;
 
-  const wonRevenue = wonCount * 15000;
-  const leadToDeal = newCount > 0 ? (wonCount / newCount) * 100 : 0;
+  const wonRevenue = wonCount * 15000; // Simplified estimation for now
+  const leadToDeal = totalLeads > 0 ? (wonCount / totalLeads) * 100 : 0;
 
   return (
     <AppShell title="Analytics" description="Performance across discovery, outreach, and revenue">
@@ -67,12 +62,10 @@ function Analytics() {
           <StatCard
             label="Won revenue"
             value={formatCurrency(wonRevenue)}
-            delta="+12.6%"
-            hint="this quarter"
           />
-          <StatCard label="Lead → deal" value={`${leadToDeal.toFixed(1)}%`} delta="+0.9pt" />
-          <StatCard label="Avg. cycle" value="18 days" delta="-3 days" />
-          <StatCard label="Cost per lead" value="$1.84" delta="-$0.22" />
+          <StatCard label="Lead → deal" value={`${leadToDeal.toFixed(1)}%`} />
+          <StatCard label="Total Leads" value={totalLeads.toString()} />
+          <StatCard label="Missing Websites" value={statsData?.missing_website?.toString() || "0"} />
         </section>
 
         <section className="grid gap-4 xl:grid-cols-2">
@@ -95,7 +88,7 @@ function Analytics() {
                 {pipeline.map((stage, i) => {
                   const prev = pipeline[i - 1];
                   const rate =
-                    prev && prev.count > 0 ? Math.round((stage.count / prev.count) * 100) : 100;
+                    prev && prev.count > 0 ? Math.round((stage.count / prev.count) * 100) : (i > 0 ? 0 : 100);
                   return (
                     <li key={stage.stage}>
                       <div className="flex items-baseline justify-between text-sm">
@@ -106,8 +99,8 @@ function Analytics() {
                       </div>
                       <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-muted">
                         <div
-                          className="h-full rounded-full bg-primary"
-                          style={{ width: `${(stage.count / (pipeline[0]?.count || 1)) * 100}%` }}
+                          className="h-full rounded-full bg-primary transition-all"
+                          style={{ width: `${totalLeads > 0 ? (stage.count / totalLeads) * 100 : 0}%` }}
                         />
                       </div>
                     </li>
@@ -116,46 +109,34 @@ function Analytics() {
               </ul>
             )}
           </div>
-
+          
           <div className="panel p-5">
-            <SectionHeader title="Lead sources" />
-            <ul className="space-y-4">
-              {sources.map((s) => (
-                <li key={s.name} className="flex items-center gap-3">
-                  <span className="min-w-0 flex-1 truncate text-sm">{s.name}</span>
-                  <span className="h-2 w-32 overflow-hidden rounded-full bg-muted">
-                    <span
-                      className="block h-full rounded-full bg-chart-2"
-                      style={{ width: `${s.share}%` }}
-                    />
-                  </span>
-                  <span className="text-numeric w-10 text-right text-xs text-muted-foreground">
-                    {s.share}%
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
-
-        <section className="panel p-5">
-          <SectionHeader
-            title="Scan throughput"
-            action={<span className="text-xs text-muted-foreground">Last 7 days</span>}
-          />
-          <div className="flex h-44 items-end gap-3">
-            {weeklyScans.map((d) => (
-              <div
-                key={d.day}
-                className="flex h-full min-w-0 flex-1 flex-col justify-end items-center gap-2"
-              >
-                <div
-                  className="w-full rounded-t-md bg-primary/80"
-                  style={{ height: `${(d.scanned / maxScan) * 100}%` }}
-                />
-                <span className="text-[11px] text-muted-foreground">{d.day}</span>
+            <SectionHeader title="Category breakdown" />
+            {statsData?.by_category ? (
+              <ul className="space-y-4">
+                {Object.entries(statsData.by_category).map(([name, count]) => {
+                  const share = Math.round((count / (statsData.total_businesses || 1)) * 100);
+                  return (
+                    <li key={name} className="flex items-center gap-3">
+                      <span className="min-w-0 flex-1 truncate text-sm">{name}</span>
+                      <span className="h-2 w-32 overflow-hidden rounded-full bg-muted">
+                        <span
+                          className="block h-full rounded-full bg-chart-2 transition-all"
+                          style={{ width: `${share}%` }}
+                        />
+                      </span>
+                      <span className="text-numeric w-10 text-right text-xs text-muted-foreground">
+                        {share}%
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">
+                No category data available.
               </div>
-            ))}
+            )}
           </div>
         </section>
       </div>
