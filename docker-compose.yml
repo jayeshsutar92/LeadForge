@@ -35,6 +35,8 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
+    env_file:
+      - ./backend/.env
     environment:
       - APP_ENV=production
       - DATABASE_URL=postgresql+asyncpg://postgres:Abc123%24%2545@db:5432/leadforge
