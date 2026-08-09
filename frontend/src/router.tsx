@@ -7,7 +7,7 @@ export interface RouterContext {
   auth: ReturnType<typeof import("./lib/auth").useAuth>;
 }
 
-export const getRouter = (authContext: ReturnType<typeof import("./lib/auth").useAuth>) => {
+export function getRouter() {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
@@ -22,7 +22,7 @@ export const getRouter = (authContext: ReturnType<typeof import("./lib/auth").us
     routeTree,
     context: {
       queryClient,
-      auth: authContext,
+      auth: undefined!,
     },
     scrollRestoration: true,
     defaultPreloadStaleTime: 0,
