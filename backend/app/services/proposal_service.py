@@ -180,7 +180,7 @@ class ProposalService:
             
         raise HTTPException(status_code=400, detail="Unsupported export format")
 
-    async def generate_outreach(self, opportunity_id: UUID, business_slug: str, contact_name: str = "") -> dict:
+    async def generate_outreach(self, opportunity_id: UUID, business_slug: str, contact_name: str = "", strategy: str = "helpful_observation", channel: str = "instagram") -> str:
         business = await self.business_repo.get_by_slug(business_slug)
         if not business:
             raise HTTPException(status_code=404, detail="Business not found")
@@ -189,4 +189,4 @@ class ProposalService:
         if not opp:
             raise HTTPException(status_code=404, detail="Opportunity not found")
             
-        return await generate_outreach(business.name, opp.data, contact_name)
+        return await generate_outreach(business.name, opp.data, contact_name, strategy, channel)

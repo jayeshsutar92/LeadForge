@@ -2,12 +2,19 @@ from typing import Any, Dict
 import json
 from app.core.config import get_settings
 from app.agents.providers.factory import ProviderFactory
+from app.services.analysis.outreach_templates import OUTREACH_TEMPLATES
 import logging
 
 logger = logging.getLogger(__name__)
 
-async def generate_outreach(business_name: str, opp_data: Dict[str, Any], contact_name: str = "") -> Dict[str, Any]:
-    """Use AI to generate personalized outreach email templates."""
+async def generate_outreach(
+    business_name: str, 
+    opp_data: Dict[str, Any], 
+    contact_name: str = "", 
+    strategy: str = "helpful_observation", 
+    channel: str = "instagram"
+) -> str:
+    """Use AI to personalize a specific outreach template."""
     
     settings = get_settings()
     config = settings.model_dump()
@@ -18,50 +25,47 @@ async def generate_outreach(business_name: str, opp_data: Dict[str, Any], contac
         logger.error(f"Failed to load AI provider for outreach: {e}")
         raise ValueError(f"AI Provider error: {e}")
 
+    # Fallback to default if not found
+    if strategy not in OUTREACH_TEMPLATES:
+        strategy = "helpful_observation"
+    if channel not in OUTREACH_TEMPLATES[strategy]:
+        channel = "instagram"
+        
+    base_template = OUTREACH_TEMPLATES[strategy][channel]
+
     schema = {
         "type": "object",
         "properties": {
-            "subject_lines": {
-                "type": "array",
-                "items": {"type": "string"},
-                "description": "4 variations of subject lines."
-            },
-            "call_to_actions": {
-                "type": "array",
-                "items": {"type": "string"},
-                "description": "4 variations of call to actions."
-            },
-            "templates": {
-                "type": "object",
-                "properties": {
-                    "value_driven": {"type": "string"},
-                    "direct": {"type": "string"},
-                    "consultative": {"type": "string"},
-                    "follow_up": {"type": "string"}
-                },
-                "required": ["value_driven", "direct", "consultative", "follow_up"]
-            },
-            "personalized_opener": {"type": "string", "description": "The main pain point identified as an opener."}
+            "message": {
+                "type": "string",
+                "description": "The finalized personalized message with placeholders filled out naturally."
+            }
         },
-        "required": ["subject_lines", "call_to_actions", "templates", "personalized_opener"]
+        "required": ["message"]
     }
     
-    greeting = f"Hi {contact_name}," if contact_name else "Hi there,"
+    contact = contact_name if contact_name else "[Name]"
     
     prompt = f"""
-    You are an expert B2B sales copywriter. Generate personalized outreach email templates for {business_name}.
-    Greeting to use: {greeting}
+    You are an expert B2B sales copywriter. Your task is to personalize the following outreach template for {business_name}.
+    
+    Base Template:
+    "{base_template}"
     
     Opportunity Data:
     {json.dumps(opp_data, indent=2)}
     
-    Generate 4 subject lines, 4 call to actions, and 4 email templates (value_driven, direct, consultative, follow_up).
-    Make them highly specific to the insights in the Opportunity Data (e.g. mention if they lack a website, or have poor SEO).
+    Instructions:
+    1. Fill in the placeholders (e.g., [Business], [Name], [specific detail], [specific product/service], [location/niche]) using the Opportunity Data.
+    2. The Contact Name is "{contact}". If it's "[Name]", replace it with a natural greeting or remove the name if appropriate.
+    3. If the website has specific issues (e.g., slow, not mobile-friendly, missing), adjust the wording naturally to reflect that, while keeping the tone exactly as the template.
+    4. If a specific detail (like a niche or specific product) is missing from the data, generate a natural wording that fits the business context rather than leaving brackets or exposing raw placeholders.
+    5. KEEP the message concise and conversational exactly as defined in the template. Do not unnecessarily rewrite the template beyond filling the placeholders and naturalizing the sentences.
     """
     
     try:
         result = await provider.generate_json(prompt=prompt, schema=schema)
-        return result
+        return result.get("message", base_template)
     except Exception as e:
         logger.error(f"AI generation failed for outreach: {e}")
         raise ValueError(f"AI generation failed: {e}")

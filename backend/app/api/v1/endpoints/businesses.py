@@ -349,12 +349,14 @@ async def generate_outreach(
     slug: str,
     opportunity_id: UUID,
     contact_name: Optional[str] = None,
+    strategy: str = Query("helpful_observation"),
+    channel: str = Query("instagram"),
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
 ):
     service = ProposalService(session)
-    outreach = await service.generate_outreach(opportunity_id, slug, contact_name or "")
-    return outreach
+    outreach = await service.generate_outreach(opportunity_id, slug, contact_name or "", strategy, channel)
+    return {"message": outreach}
 
 
 
