@@ -13,10 +13,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   useBusinessStats,
-  useCreateBusiness,
-  useCreateLead,
-  useTriggerAnalysis,
   useBusinesses,
+  useDiscoverBusinesses,
 } from "@/lib/api-hooks";
 
 export const Route = createFileRoute("/discover")({
@@ -61,9 +59,7 @@ function Discover() {
     isLoading: bizLoading,
     refetch: refetchBiz,
   } = useBusinesses({ limit: 12 });
-  const createBusiness = useCreateBusiness();
-  const createLead = useCreateLead();
-  const triggerAnalysis = useTriggerAnalysis();
+  const discoverBusinesses = useDiscoverBusinesses();
 
   const [scanState, setScanState] = useState<{
     active: boolean;
@@ -98,79 +94,27 @@ function Discover() {
     });
 
     try {
-      // Fetch from Nominatim OpenStreetMap
-      const queryStr = encodeURIComponent(`${data.query} in ${data.region}`);
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${queryStr}&format=json&extratags=1&addressdetails=1&limit=10`,
-        {
-          headers: { "User-Agent": "LeadForgeApp/1.0" },
-        },
-      );
-
-      if (!res.ok) throw new Error(`API error: ${res.status}`);
-
-      const results = await res.json();
-      const validResults = results.filter((r: any) => r.name);
+      const result = await discoverBusinesses.mutateAsync({
+        query: data.query,
+        region: data.region,
+      });
 
       setScanState((prev) => ({
         ...prev,
-        message: `Found ${validResults.length} businesses, processing...`,
-        found: validResults.length,
+        found: result.found,
+        processed: result.found, // all processed on backend
+        message: result.message,
       }));
 
-      let newLeads = 0;
-
-      for (const place of validResults) {
-        try {
-          const name = place.name;
-          // Generate unique slug
-          const slug = `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${place.place_id}`;
-          const extratags = place.extratags || {};
-          const address = place.address || {};
-
-          const website = extratags.website || extratags["contact:website"] || extratags.url || "";
-          const city =
-            address.city || address.town || address.village || address.county || data.region;
-          const country = address.country || "Unknown";
-
-          // Create business
-          const biz = await createBusiness.mutateAsync({
-            name,
-            slug,
-            category: data.query,
-            city,
-            country,
-            website,
-            bio: `Discovered via OpenStreetMap. Category: ${place.type || "unknown"}`,
-          });
-
-          // Create lead
-          await createLead.mutateAsync({
-            business_id: biz.id,
-            source: "Discovery Scan",
-            notes: `Discovered scanning for ${data.query} in ${data.region}`,
-          });
-
-          // Trigger intelligence
-          triggerAnalysis.mutate(biz.slug);
-
-          newLeads++;
-        } catch (e: any) {
-          console.warn("Failed to process business:", place.name, e);
-        }
-
-        setScanState((prev) => ({ ...prev, processed: prev.processed + 1 }));
-      }
-
       toast.success("Scan completed successfully", {
-        description: `Imported ${newLeads} new leads from ${validResults.length} found businesses.`,
+        description: `Imported ${result.new_leads} new leads from ${result.found} found businesses.`,
       });
 
       refetchStats();
       refetchBiz();
     } catch (error: any) {
       toast.error("Scan failed", {
-        description: error.message || "An unexpected error occurred during the scan.",
+        description: error.response?.data?.detail || error.message || "An unexpected error occurred during the scan.",
       });
     } finally {
       setScanState((prev) => ({ ...prev, active: false }));

@@ -62,6 +62,20 @@ export const useBusinessStats = () => {
   });
 };
 
+export const useDiscoverBusinesses = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: { query: string; region: string }) => {
+      const res = await apiClient.post("/businesses/discover", data);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["businesses"] });
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+    },
+  });
+};
+
 export const useLeads = (params?: any) => {
   return useQuery({
     queryKey: ["leads", params],

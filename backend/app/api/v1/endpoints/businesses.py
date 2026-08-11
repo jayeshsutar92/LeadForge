@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+import logging
+import re
+import httpx
+from pydantic import BaseModel
+from urllib.parse import quote_plus
 from typing import Optional
 from uuid import UUID
 
@@ -22,6 +27,19 @@ from app.services.proposal_service import ProposalService
 from app.services.scoring import compute_opportunity_score, get_recommendation
 from app.schemas.business_intelligence import BusinessIntelligenceListResponse, BusinessIntelligenceResult
 from app.schemas.opportunity import OpportunityResponse
+from app.services.crm_service import CRMService
+from app.schemas.crm import LeadCreate
+
+logger = logging.getLogger(__name__)
+
+class DiscoverRequest(BaseModel):
+    query: str
+    region: str
+
+class DiscoverResponse(BaseModel):
+    message: str
+    found: int
+    new_leads: int
 
 router = APIRouter()
 
@@ -54,6 +72,85 @@ async def list_businesses(
         user_id=str(user.id),
     )
     return BusinessListResponse(total=total, results=cards)
+
+
+@router.post("/discover", response_model=DiscoverResponse)
+async def discover_businesses(
+    payload: DiscoverRequest,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+):
+    query_str = quote_plus(f"{payload.query} in {payload.region}")
+    url = f"https://nominatim.openstreetmap.org/search?q={query_str}&format=json&extratags=1&addressdetails=1&limit=10"
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            res = await client.get(url, headers={"User-Agent": "LeadForgeBackend/1.0"}, timeout=15.0)
+            res.raise_for_status()
+            results = res.json()
+    except Exception as e:
+        logger.error(f"Discovery API failed: {e}")
+        raise HTTPException(status_code=502, detail="External discovery service failed")
+
+    valid_results = [r for r in results if r.get("name")]
+    
+    biz_service = BusinessService(session)
+    crm_service = CRMService(session)
+    bi_service = BusinessIntelligenceService(session)
+    
+    new_leads = 0
+    
+    for place in valid_results:
+        try:
+            name = place["name"]
+            raw_slug = f"{name.lower().replace(' ', '-').replace('/', '-')}-{place.get('place_id')}"
+            slug = re.sub(r'[^a-z0-9\-]', '', raw_slug)
+            
+            existing = await biz_service.business_repo.get_by_slug(slug)
+            if existing:
+                continue
+                
+            extratags = place.get("extratags") or {}
+            address = place.get("address") or {}
+            
+            website = extratags.get("website") or extratags.get("contact:website") or extratags.get("url") or ""
+            city = address.get("city") or address.get("town") or address.get("village") or address.get("county") or payload.region
+            country = address.get("country", "Unknown")
+            
+            biz_create = BusinessCreate(
+                name=name,
+                slug=slug,
+                category=payload.query,
+                city=city,
+                country=country,
+                website=website,
+                bio=f"Discovered via OpenStreetMap. Category: {place.get('type', 'unknown')}"
+            )
+            
+            biz = await biz_service.create_business(biz_create)
+            
+            lead_create = LeadCreate(
+                business_id=biz.id,
+                source="Discovery Scan",
+                notes=f"Discovered scanning for {payload.query} in {payload.region}"
+            )
+            await crm_service.create_lead(lead_create, current_user_id=user.id)
+            
+            try:
+                await bi_service.trigger_analysis(biz.slug)
+            except Exception as e:
+                logger.error(f"Failed to trigger analysis for {biz.slug}: {e}")
+            
+            new_leads += 1
+            
+        except Exception as e:
+            logger.error(f"Failed to process discovered business {place.get('name')}: {e}")
+            
+    return DiscoverResponse(
+        message=f"Found {len(valid_results)} businesses, processed {new_leads} new leads.",
+        found=len(valid_results),
+        new_leads=new_leads
+    )
 
 
 @router.get("/categories")
