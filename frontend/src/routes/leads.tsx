@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import {
   Building2,
@@ -117,9 +117,11 @@ function LeadsPage() {
       title="Leads"
       description={leadsLoading ? "Loading leads..." : `${rows.length} businesses match your view`}
       actions={
-        <Button>
-          <Plus className="size-4" />
-          Add lead
+        <Button asChild>
+          <Link to="/discover">
+            <Plus className="size-4" />
+            Add lead
+          </Link>
         </Button>
       }
     >

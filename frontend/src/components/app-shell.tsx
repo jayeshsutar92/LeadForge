@@ -75,15 +75,6 @@ export function AppShell({
           })}
         </nav>
 
-        <div className="m-3 rounded-xl border border-border bg-surface-raised p-3.5 glow-panel">
-          <p className="text-xs font-semibold">AI credits</p>
-          <p className="mt-1 text-numeric text-xl font-semibold">1,284</p>
-          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-            <div className="h-full w-[62%] rounded-full bg-primary" />
-          </div>
-          <p className="mt-2 text-[11px] text-muted-foreground">Resets in 12 days</p>
-        </div>
-
         <UserSidebarProfile />
       </aside>
 

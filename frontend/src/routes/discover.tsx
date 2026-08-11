@@ -317,7 +317,7 @@ function Discover() {
                         </div>
                         <div className="text-right">
                           <p className="text-xs text-muted-foreground">
-                            {new Date(b.created_at).toLocaleDateString()}
+                            {b.created_at ? new Date(b.created_at).toLocaleDateString() : "N/A"}
                           </p>
                         </div>
                       </div>

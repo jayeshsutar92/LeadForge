@@ -41,6 +41,7 @@ class BusinessService:
             **b_dict,
             opportunity_score=score,
             tier=score_tier(score),
+            created_at=b.created_at,
         )
 
     async def list_businesses(

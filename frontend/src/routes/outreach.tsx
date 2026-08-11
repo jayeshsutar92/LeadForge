@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 import { Mail, MessageSquare, Plus, Sparkles, Loader2 } from "lucide-react";
 import { useMemo } from "react";
 
@@ -56,9 +56,11 @@ function Outreach() {
         return { lead, biz };
       })
       .filter((x) => x.biz)
-      .sort(
-        (a, b) => new Date(b.lead.updated_at).getTime() - new Date(a.lead.updated_at).getTime(),
-      );
+      .sort((a, b) => {
+        const tA = a.lead.updated_at ? new Date(a.lead.updated_at).getTime() : 0;
+        const tB = b.lead.updated_at ? new Date(b.lead.updated_at).getTime() : 0;
+        return tB - tA;
+      });
   }, [leadsData, businessesData]);
 
   const activeCount = contactedLeads.length;
@@ -68,9 +70,11 @@ function Outreach() {
       title="Outreach"
       description={`${activeCount} leads actively in pipeline`}
       actions={
-        <Button>
-          <Plus className="size-4" />
-          Start campaign
+        <Button asChild>
+          <Link to="/leads">
+            <Plus className="size-4" />
+            Start campaign
+          </Link>
         </Button>
       }
     >
@@ -179,7 +183,7 @@ function OutreachCard({ lead, biz }: { lead: any; biz: any }) {
           </p>
         </div>
         <span className="shrink-0 text-[11px] text-muted-foreground">
-          Updated {new Date(lead.updated_at).toLocaleDateString()}
+          Updated {lead.updated_at ? new Date(lead.updated_at).toLocaleDateString() : "N/A"}
         </span>
       </div>
 

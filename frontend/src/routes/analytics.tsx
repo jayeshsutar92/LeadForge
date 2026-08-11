@@ -5,7 +5,7 @@ import { Loader2 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { SectionHeader, StatCard } from "@/components/leadforge-ui";
 import { formatCurrency } from "@/lib/ui-utils";
-import { useLeads, useBusinessStats } from "@/lib/api-hooks";
+import { useLeads, useBusinessStats, useBusinesses } from "@/lib/api-hooks";
 
 export const Route = createFileRoute("/analytics")({
   head: () => ({
@@ -29,6 +29,7 @@ function Analytics() {
   } = useLeads({ limit: 100 });
 
   const { data: statsData } = useBusinessStats();
+  const { data: businessesData } = useBusinesses({ limit: 100 });
 
   const pipeline = useMemo(() => {
     if (!leadsData?.results) return [];
@@ -52,7 +53,19 @@ function Analytics() {
 
   const totalLeads = leadsData?.total || 0;
 
-  const wonRevenue = wonCount * 15000; // Simplified estimation for now
+  const wonRevenue = useMemo(() => {
+    if (!leadsData?.results || !businessesData?.results) return 0;
+    const wonLeads = leadsData.results.filter(l => l.status === "won");
+    let total = 0;
+    for (const lead of wonLeads) {
+      const biz = businessesData.results.find(b => b.id === lead.business_id);
+      if (biz) {
+        total += (biz.opportunity_score || 70) * 120;
+      }
+    }
+    return total;
+  }, [leadsData, businessesData]);
+
   const leadToDeal = totalLeads > 0 ? (wonCount / totalLeads) * 100 : 0;
 
   return (

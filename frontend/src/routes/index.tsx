@@ -47,20 +47,29 @@ function Overview() {
     return stages.map((s) => {
       const stageLeads = leadsData.results.filter((l) => l.status === s.key);
       const count = stageLeads.length;
+      let stageValue = 0;
+      for (const lead of stageLeads) {
+        const biz = businessesData?.results?.find(b => b.id === lead.business_id);
+        stageValue += (biz?.opportunity_score || 70) * 120;
+      }
       return {
         stage: s.stage,
         count,
-        value: count * 15000, // Estimated avg value
+        value: stageValue,
       };
     });
-  }, [leadsData]);
+  }, [leadsData, businessesData]);
 
   const pipelineValue = pipeline.reduce((acc, p) => acc + p.value, 0);
 
   const recentLeads = useMemo(() => {
     if (!leadsData?.results) return [];
     return [...leadsData.results]
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .sort((a, b) => {
+        const tA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const tB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return tB - tA;
+      })
       .slice(0, 5);
   }, [leadsData]);
 
@@ -220,7 +229,7 @@ function Overview() {
                           <span className="text-muted-foreground">was discovered via scan</span>
                         </p>
                         <p className="text-[11px] text-muted-foreground uppercase">
-                          {lead.status} · {new Date(lead.created_at).toLocaleTimeString()}
+                          {lead.status} · {lead.created_at ? new Date(lead.created_at).toLocaleTimeString() : "N/A"}
                         </p>
                       </div>
                     </li>
