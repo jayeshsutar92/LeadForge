@@ -50,7 +50,7 @@ function Proposals() {
   const activeProposals = useMemo(() => {
     if (!leadsData?.results || !businessesData?.results) return [];
     return leadsData.results
-      .filter((l) => l.status === "qualified" || l.status === "negotiating" || l.status === "won")
+      .filter((l) => ["new", "qualified", "contacted", "negotiating", "won"].includes(l.status))
       .map((lead) => {
         const biz = businessesData.results.find((b) => b.id === lead.business_id);
         return { lead, biz };

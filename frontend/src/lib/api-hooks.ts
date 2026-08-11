@@ -98,6 +98,20 @@ export const useCreateLead = () => {
   });
 };
 
+export const useUpdateLead = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const res = await apiClient.put(`/crm/leads/${id}`, data);
+      return res.data;
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+      queryClient.invalidateQueries({ queryKey: ["leads", variables.id] });
+    },
+  });
+};
+
 export const useLeadDetail = (leadId: string | null) => {
   return useQuery({
     queryKey: ["leads", leadId],

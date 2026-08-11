@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import {
   Building2,
@@ -21,7 +21,14 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCurrency, statusMeta, type LeadStatus } from "@/lib/ui-utils";
 import { cn } from "@/lib/utils";
-import { useLeads, useBusinesses, useLeadDetail, useBusinessDetail } from "@/lib/api-hooks";
+import { useLeads, useBusinesses, useLeadDetail, useBusinessDetail, useUpdateLead } from "@/lib/api-hooks";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export const Route = createFileRoute("/leads")({
   head: () => ({
@@ -49,6 +56,8 @@ function LeadsPage() {
   const [filter, setFilter] = useState<LeadStatus | "all">("all");
   const [query, setQuery] = useState("");
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const updateLead = useUpdateLead();
 
   const {
     data: leadsData,
@@ -274,7 +283,27 @@ function LeadsPage() {
                     </p>
                   </div>
                   <span className="ml-auto">
-                    <StatusPill status={(selectedLeadDetail?.status as LeadStatus) || "new"} />
+                    <Select
+                      value={selectedLeadDetail?.status || "new"}
+                      onValueChange={(value) => {
+                        if (selectedLeadDetail?.id) {
+                          updateLead.mutate({ id: selectedLeadDetail.id, data: { status: value } });
+                        }
+                      }}
+                      disabled={updateLead.isPending}
+                    >
+                      <SelectTrigger className="h-7 text-xs w-[120px]">
+                        <SelectValue placeholder="Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="new">New</SelectItem>
+                        <SelectItem value="qualified">Qualified</SelectItem>
+                        <SelectItem value="contacted">Contacted</SelectItem>
+                        <SelectItem value="negotiating">Negotiating</SelectItem>
+                        <SelectItem value="won">Won</SelectItem>
+                        <SelectItem value="lost">Lost</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </span>
                 </div>
 
@@ -318,11 +347,11 @@ function LeadsPage() {
                   </dl>
 
                   <div className="flex gap-2">
-                    <Button className="flex-1">
+                    <Button className="flex-1" onClick={() => navigate({ to: '/proposals' })}>
                       <Sparkles className="size-4" />
                       Draft proposal
                     </Button>
-                    <Button variant="outline" className="flex-1">
+                    <Button variant="outline" className="flex-1" onClick={() => navigate({ to: '/outreach' })}>
                       Start outreach
                     </Button>
                   </div>

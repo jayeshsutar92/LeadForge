@@ -12,6 +12,7 @@ import {
   useOpportunity,
   useGenerateOpportunity,
   useGenerateOutreach,
+  useUpdateLead,
 } from "@/lib/api-hooks";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -48,7 +49,7 @@ function Outreach() {
     if (!leadsData?.results || !businessesData?.results) return [];
     return leadsData.results
       .filter(
-        (l) => l.status === "contacted" || l.status === "negotiating" || l.status === "qualified",
+        (l) => ["new", "qualified", "contacted", "negotiating"].includes(l.status),
       )
       .map((lead) => {
         const biz = businessesData.results.find((b) => b.id === lead.business_id);
@@ -134,8 +135,9 @@ function OutreachCard({ lead, biz }: { lead: any; biz: any }) {
 
   const generateOpp = useGenerateOpportunity();
   const generateOutreach = useGenerateOutreach();
+  const updateLead = useUpdateLead();
 
-  const isGenerating = generateOpp.isPending || generateOutreach.isPending;
+  const isGenerating = generateOpp.isPending || generateOutreach.isPending || updateLead.isPending;
 
   const handleGenerate = async () => {
     if (!biz?.slug || !bi?.id) return;
@@ -154,6 +156,9 @@ function OutreachCard({ lead, biz }: { lead: any; biz: any }) {
         });
         setOutreachText(data.message || data);
         toast.success("Outreach drafted successfully");
+        if (lead.status === "new" || lead.status === "qualified") {
+          await updateLead.mutateAsync({ id: lead.id, data: { status: "contacted" } });
+        }
       }
     } catch (err: any) {
       toast.error(
