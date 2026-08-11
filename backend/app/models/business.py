@@ -1,7 +1,9 @@
 from __future__ import annotations
 
-from sqlalchemy import Boolean, Float, Index, Integer, String, Text
+from sqlalchemy import Boolean, Float, Index, Integer, String, Text, ForeignKey
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+import uuid
 
 from app.db.base_class import Base
 from app.models.mixins import TimestampMixin, UUIDPrimaryKeyMixin
@@ -12,6 +14,13 @@ class Business(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __table_args__ = (
         Index("ix_businesses_slug", "slug", unique=True),
         Index("ix_businesses_category", "category"),
+        Index("ix_businesses_user_id", "user_id"),
+    )
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
     )
 
     slug: Mapped[str] = mapped_column(String(255), nullable=False)

@@ -92,15 +92,15 @@ class BusinessIntelligenceService:
         
         return bi
 
-    async def list_history(self, business_slug: str, limit: int = 10, offset: int = 0) -> list[BusinessIntelligence]:
-        business = await self.business_repo.get_by_slug(business_slug)
+    async def list_history(self, business_slug: str, limit: int = 10, offset: int = 0, user_id: UUID | None = None) -> list[BusinessIntelligence]:
+        business = await self.business_repo.get_by_slug(business_slug, user_id)
         if not business:
             raise HTTPException(status_code=404, detail="Business not found")
             
         return await self.repo.list_by_business(business.id, limit=limit, offset=offset)
 
-    async def count_history(self, business_slug: str) -> int:
-        business = await self.business_repo.get_by_slug(business_slug)
+    async def count_history(self, business_slug: str, user_id: UUID | None = None) -> int:
+        business = await self.business_repo.get_by_slug(business_slug, user_id)
         if not business:
             raise HTTPException(status_code=404, detail="Business not found")
             

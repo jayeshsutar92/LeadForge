@@ -32,6 +32,7 @@ async def list_leads(
 ):
     service = CRMService(session)
     total, leads = await service.list_leads(
+        user_id=user.id,
         q=q,
         status=status,
         assigned_to=assigned_to,
@@ -51,7 +52,7 @@ async def create_lead(
 ):
     # Verify business exists
     biz_service = BusinessService(session)
-    biz = await biz_service.business_repo.get_by_id(payload.business_id)
+    biz = await biz_service.business_repo.get_by_id(payload.business_id, user.id)
     if not biz:
         raise HTTPException(status_code=404, detail="Business not found")
 
@@ -67,7 +68,7 @@ async def get_lead(
     session: AsyncSession = Depends(get_db_session),
 ):
     service = CRMService(session)
-    lead = await service.get_lead(lead_id)
+    lead = await service.get_lead(lead_id, user.id)
     return LeadDetailResponse.model_validate(lead)
 
 
@@ -90,7 +91,7 @@ async def delete_lead(
     session: AsyncSession = Depends(get_db_session),
 ):
     service = CRMService(session)
-    await service.delete_lead(lead_id)
+    await service.delete_lead(lead_id, user.id)
     return
 
 

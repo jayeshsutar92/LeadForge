@@ -14,20 +14,20 @@ class CRMRepository:
 
     # ─── Lead Operations ────────────────────────────────────────────────────────
 
-    async def get_lead(self, lead_id: UUID) -> Lead | None:
+    async def get_lead(self, lead_id: UUID, user_id: UUID) -> Lead | None:
         stmt = (
             select(Lead)
             .options(selectinload(Lead.activities))
-            .where(Lead.id == lead_id)
+            .where(Lead.id == lead_id, Lead.user_id == user_id)
         )
         result = await self.session.execute(stmt)
         return result.scalars().first()
 
-    async def get_lead_by_business(self, business_id: UUID) -> Lead | None:
+    async def get_lead_by_business(self, business_id: UUID, user_id: UUID) -> Lead | None:
         stmt = (
             select(Lead)
             .options(selectinload(Lead.activities))
-            .where(Lead.business_id == business_id)
+            .where(Lead.business_id == business_id, Lead.user_id == user_id)
         )
         result = await self.session.execute(stmt)
         return result.scalars().first()
@@ -38,8 +38,8 @@ class CRMRepository:
         await self.session.refresh(lead)
         return lead
 
-    async def update_lead(self, lead_id: UUID, **kwargs) -> Lead | None:
-        lead = await self.get_lead(lead_id)
+    async def update_lead(self, lead_id: UUID, user_id: UUID, **kwargs) -> Lead | None:
+        lead = await self.get_lead(lead_id, user_id)
         if not lead:
             return None
         
@@ -50,8 +50,8 @@ class CRMRepository:
         await self.session.refresh(lead)
         return lead
 
-    async def delete_lead(self, lead_id: UUID) -> bool:
-        lead = await self.get_lead(lead_id)
+    async def delete_lead(self, lead_id: UUID, user_id: UUID) -> bool:
+        lead = await self.get_lead(lead_id, user_id)
         if not lead:
             return False
         await self.session.delete(lead)
@@ -60,6 +60,7 @@ class CRMRepository:
 
     async def list_leads(
         self,
+        user_id: UUID,
         q: str | None = None,
         status: str | None = None,
         assigned_to: UUID | None = None,
@@ -68,8 +69,8 @@ class CRMRepository:
         offset: int = 0,
         sort: str = "created_desc",
     ) -> tuple[int, Sequence[Lead]]:
-        stmt = select(Lead)
-        count_stmt = select(func.count()).select_from(Lead)
+        stmt = select(Lead).where(Lead.user_id == user_id)
+        count_stmt = select(func.count()).select_from(Lead).where(Lead.user_id == user_id)
 
         # Filters
         if q:

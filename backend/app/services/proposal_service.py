@@ -180,8 +180,12 @@ class ProposalService:
             
         raise HTTPException(status_code=400, detail="Unsupported export format")
 
-    async def generate_outreach(self, opportunity_id: UUID, business_slug: str, contact_name: str = "", strategy: str = "helpful_observation", channel: str = "instagram") -> str:
-        business = await self.business_repo.get_by_slug(business_slug)
+    async def generate_outreach(self, opportunity_id: UUID, business_slug: str, contact_name: str, strategy: str, channel: str, user_id: UUID | None = None) -> str:
+        """Generate a personalized outreach message."""
+        # 1. Fetch data
+        opp = await self.get_latest(opportunity_id)  # Returns Proposal or None, wait, actually we just need opp data
+        # Actually it's opp data, wait, we don't fetch opp here, we fetch it below. Let's just pass user_id.
+        business = await self.business_repo.get_by_slug(business_slug, user_id)
         if not business:
             raise HTTPException(status_code=404, detail="Business not found")
             

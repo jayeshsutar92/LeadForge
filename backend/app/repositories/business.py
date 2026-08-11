@@ -11,16 +11,21 @@ class BusinessRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def get_by_id(self, business_id: UUID) -> Business | None:
-        result = await self.session.execute(select(Business).where(Business.id == business_id))
+    async def get_by_id(self, business_id: UUID, user_id: UUID) -> Business | None:
+        result = await self.session.execute(
+            select(Business).where(Business.id == business_id, Business.user_id == user_id)
+        )
         return result.scalar_one_or_none()
 
-    async def get_by_slug(self, slug: str) -> Business | None:
-        result = await self.session.execute(select(Business).where(Business.slug == slug))
+    async def get_by_slug(self, slug: str, user_id: UUID) -> Business | None:
+        result = await self.session.execute(
+            select(Business).where(Business.slug == slug, Business.user_id == user_id)
+        )
         return result.scalar_one_or_none()
 
     async def list(
         self,
+        user_id: UUID,
         *,
         limit: int = 60,
         offset: int = 0,
@@ -38,22 +43,26 @@ class BusinessRepository:
             website_status=website_status,
             min_followers=min_followers,
         )
+        statement = statement.where(Business.user_id == user_id)
         statement = statement.offset(offset).limit(limit)
         items_result = await self.session.execute(statement)
         return list(items_result.scalars().all())
         
-    async def get_categories(self) -> list[str]:
-        statement = select(Business.category).distinct().order_by(Business.category)
+    async def get_categories(self, user_id: UUID) -> list[str]:
+        statement = select(Business.category).where(Business.user_id == user_id).distinct().order_by(Business.category)
         result = await self.session.execute(statement)
         return list(result.scalars().all())
         
-    async def count_total(self) -> int:
-        result = await self.session.execute(select(func.count()).select_from(Business))
+    async def count_total(self, user_id: UUID) -> int:
+        result = await self.session.execute(select(func.count()).select_from(Business).where(Business.user_id == user_id))
         return result.scalar_one()
         
-    async def count_missing_website(self) -> int:
+    async def count_missing_website(self, user_id: UUID) -> int:
         result = await self.session.execute(
-            select(func.count()).select_from(Business).where(or_(Business.website.is_(None), Business.website == ""))
+            select(func.count()).select_from(Business).where(
+                Business.user_id == user_id,
+                or_(Business.website.is_(None), Business.website == "")
+            )
         )
         return result.scalar_one()
 
@@ -97,16 +106,18 @@ class BusinessRepository:
         await self.session.refresh(business)
         return business
 
-    async def update(self, business_id: UUID, **kwargs) -> Business | None:
+    async def update(self, business_id: UUID, user_id: UUID, **kwargs) -> Business | None:
         await self.session.execute(
             update(Business)
-            .where(Business.id == business_id)
+            .where(Business.id == business_id, Business.user_id == user_id)
             .values(**kwargs)
         )
         await self.session.commit()
-        return await self.get_by_id(business_id)
+        return await self.get_by_id(business_id, user_id)
 
-    async def delete(self, business_id: UUID) -> int:
-        result = await self.session.execute(delete(Business).where(Business.id == business_id))
+    async def delete(self, business_id: UUID, user_id: UUID) -> int:
+        result = await self.session.execute(
+            delete(Business).where(Business.id == business_id, Business.user_id == user_id)
+        )
         await self.session.commit()
         return result.rowcount

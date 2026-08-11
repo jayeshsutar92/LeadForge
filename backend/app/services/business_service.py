@@ -1,4 +1,5 @@
 import re
+from uuid import UUID
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -56,9 +57,10 @@ class BusinessService:
         sort: str = "score_desc",
         limit: int = 60,
         offset: int = 0,
-        user_id: Optional[str] = None,
+        user_id: UUID,
     ) -> tuple[int, list[BusinessCard]]:
         businesses = await self.business_repo.list(
+            user_id=user_id,
             q=q,
             category=category,
             city=city,
@@ -81,9 +83,8 @@ class BusinessService:
             cards.sort(key=lambda x: x.name.lower())
 
         if user_id and (q or category or website_status or min_followers or min_score):
-            import uuid
             history = SearchHistory(
-                user_id=uuid.UUID(user_id),
+                user_id=user_id,
                 query=q or "",
                 filters={
                     "category": category,
@@ -98,19 +99,19 @@ class BusinessService:
 
         return len(cards), cards
 
-    async def create_business(self, data: BusinessCreate) -> BusinessCard:
+    async def create_business(self, data: BusinessCreate, user_id: UUID) -> BusinessCard:
         # Check if it already exists
-        existing = await self.business_repo.get_by_slug(data.slug)
+        existing = await self.business_repo.get_by_slug(data.slug, user_id)
         if existing:
             return self._to_card(existing)
         # Convert schema to model
-        business = Business(**data.dict())
+        business = Business(**data.dict(), user_id=user_id)
         created = await self.business_repo.create(business)
         return self._to_card(created)
 
-    async def update_business(self, slug: str, data: BusinessUpdate) -> BusinessCard:
+    async def update_business(self, slug: str, data: BusinessUpdate, user_id: UUID) -> BusinessCard:
         # Fetch existing business
-        existing = await self.business_repo.get_by_slug(slug)
+        existing = await self.business_repo.get_by_slug(slug, user_id)
         if not existing:
             from fastapi import HTTPException, status
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Business not found")
@@ -118,13 +119,13 @@ class BusinessService:
         update_data = {k: v for k, v in data.dict().items() if v is not None}
         if not update_data:
             return self._to_card(existing)
-        await self.business_repo.update(existing.id, **update_data)
-        updated = await self.business_repo.get_by_id(existing.id)
+        await self.business_repo.update(existing.id, user_id=user_id, **update_data)
+        updated = await self.business_repo.get_by_id(existing.id, user_id)
         return self._to_card(updated)
 
-    async def delete_business(self, slug: str) -> None:
-        existing = await self.business_repo.get_by_slug(slug)
+    async def delete_business(self, slug: str, user_id: UUID) -> None:
+        existing = await self.business_repo.get_by_slug(slug, user_id)
         if not existing:
             from fastapi import HTTPException, status
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Business not found")
-        await self.business_repo.delete(existing.id)
+        await self.business_repo.delete(existing.id, user_id)

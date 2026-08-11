@@ -18,6 +18,13 @@ class Lead(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         Index("ix_leads_business_id", "business_id", unique=True),
         Index("ix_leads_status", "status"),
         Index("ix_leads_assigned_to", "assigned_to"),
+        Index("ix_leads_user_id", "user_id"),
+    )
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
     )
 
     business_id: Mapped[uuid.UUID] = mapped_column(
@@ -41,7 +48,8 @@ class Lead(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
 
     business: Mapped["Business"] = relationship("Business")
-    assignee: Mapped["User"] = relationship("User")
+    assignee: Mapped["User"] = relationship("User", foreign_keys=[assigned_to])
+    owner: Mapped["User"] = relationship("User", foreign_keys=[user_id])
     activities: Mapped[list["Activity"]] = relationship(
         "Activity",
         back_populates="lead",

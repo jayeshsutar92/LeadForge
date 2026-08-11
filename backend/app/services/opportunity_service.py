@@ -49,9 +49,9 @@ class OpportunityService:
         payload = json.dumps({"id": str(opp.id)})
         await self.redis.set(key, payload, ex=_OPP_CACHE_TTL)
 
-    async def generate_opportunity(self, bi_id: UUID, business_slug: str) -> Opportunity:
+    async def generate_opportunity(self, bi_id: UUID, business_slug: str, user_id: UUID | None = None) -> Opportunity:
         """Run deterministic scoring and generate opportunity based on BI data."""
-        business = await self.business_repo.get_by_slug(business_slug)
+        business = await self.business_repo.get_by_slug(business_slug, user_id)
         if not business:
             raise HTTPException(status_code=404, detail="Business not found")
             

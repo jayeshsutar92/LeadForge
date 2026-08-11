@@ -27,7 +27,7 @@ class CRMService:
 
     # ─── Leads ────────────────────────────────────────────────────────────────
 
-    async def get_lead(self, lead_id: UUID) -> Lead:
+    async def get_lead(self, lead_id: UUID, user_id: UUID) -> Lead:
         key = self._cache_key(str(lead_id))
         cached = await self.redis.get(key)
         
@@ -43,7 +43,7 @@ class CRMService:
             except Exception:
                 pass
                 
-        lead = await self.repo.get_lead(lead_id)
+        lead = await self.repo.get_lead(lead_id, user_id)
         if not lead:
             raise HTTPException(status_code=404, detail="Lead not found")
             
@@ -51,16 +51,17 @@ class CRMService:
         await self.redis.set(key, payload, ex=_LEAD_CACHE_TTL)
         return lead
 
-    async def get_lead_by_business(self, business_id: UUID) -> Lead | None:
-        return await self.repo.get_lead_by_business(business_id)
+    async def get_lead_by_business(self, business_id: UUID, user_id: UUID) -> Lead | None:
+        return await self.repo.get_lead_by_business(business_id, user_id)
 
-    async def create_lead(self, payload: LeadCreate, current_user_id: UUID | None = None) -> Lead:
+    async def create_lead(self, payload: LeadCreate, current_user_id: UUID) -> Lead:
         # Check if lead already exists for this business
-        existing = await self.repo.get_lead_by_business(payload.business_id)
+        existing = await self.repo.get_lead_by_business(payload.business_id, current_user_id)
         if existing:
             return existing
 
         lead = Lead(
+            user_id=current_user_id,
             business_id=payload.business_id,
             status=payload.status,
             priority=payload.priority,
@@ -82,10 +83,10 @@ class CRMService:
         await self.repo.create_activity(activity)
         
         # Need to reload to get activities populated
-        return await self.get_lead(created.id)
+        return await self.get_lead(created.id, current_user_id)
 
-    async def update_lead(self, lead_id: UUID, payload: LeadUpdate, current_user_id: UUID | None = None) -> Lead:
-        lead = await self.get_lead(lead_id)
+    async def update_lead(self, lead_id: UUID, payload: LeadUpdate, current_user_id: UUID) -> Lead:
+        lead = await self.get_lead(lead_id, current_user_id)
         
         update_data = {k: v for k, v in payload.model_dump().items() if v is not None}
         if not update_data:
@@ -93,7 +94,7 @@ class CRMService:
             
         old_status = lead.status
             
-        updated = await self.repo.update_lead(lead_id, **update_data)
+        updated = await self.repo.update_lead(lead_id, current_user_id, **update_data)
         
         # If status changed, log an activity automatically
         if "status" in update_data and update_data["status"] != old_status:
@@ -106,10 +107,11 @@ class CRMService:
             await self.repo.create_activity(activity)
 
         await self._invalidate_cache(lead_id)
-        return await self.get_lead(lead_id)
+        return await self.get_lead(lead_id, current_user_id)
 
     async def list_leads(
         self,
+        user_id: UUID,
         q: str | None = None,
         status: str | None = None,
         assigned_to: UUID | None = None,
@@ -119,6 +121,7 @@ class CRMService:
         sort: str = "created_desc",
     ) -> tuple[int, list[Lead]]:
         return await self.repo.list_leads(
+            user_id=user_id,
             q=q,
             status=status,
             assigned_to=assigned_to,
@@ -128,16 +131,16 @@ class CRMService:
             sort=sort,
         )
 
-    async def delete_lead(self, lead_id: UUID) -> None:
-        deleted = await self.repo.delete_lead(lead_id)
+    async def delete_lead(self, lead_id: UUID, user_id: UUID) -> None:
+        deleted = await self.repo.delete_lead(lead_id, user_id)
         if not deleted:
             raise HTTPException(status_code=404, detail="Lead not found")
         await self._invalidate_cache(lead_id)
 
     # ─── Activities / Workflow ────────────────────────────────────────────────
 
-    async def log_activity(self, lead_id: UUID, payload: ActivityCreate, current_user_id: UUID | None = None) -> Lead:
-        lead = await self.get_lead(lead_id)
+    async def log_activity(self, lead_id: UUID, payload: ActivityCreate, current_user_id: UUID) -> Lead:
+        lead = await self.get_lead(lead_id, current_user_id)
         
         activity = Activity(
             lead_id=lead_id,
@@ -150,7 +153,7 @@ class CRMService:
         
         # Update last_contacted if it's a communication activity
         if payload.activity_type in ["call", "email", "meeting"]:
-            await self.repo.update_lead(lead_id, last_contacted=datetime.now(UTC))
+            await self.repo.update_lead(lead_id, current_user_id, last_contacted=datetime.now(UTC))
             
         await self._invalidate_cache(lead_id)
-        return await self.get_lead(lead_id)
+        return await self.get_lead(lead_id, current_user_id)

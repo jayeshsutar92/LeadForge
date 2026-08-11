@@ -69,7 +69,7 @@ async def list_businesses(
         min_score=min_score or 0,
         sort=sort,
         limit=limit,
-        user_id=str(user.id),
+        user_id=user.id,
     )
     return BusinessListResponse(total=total, results=cards)
 
@@ -106,7 +106,7 @@ async def discover_businesses(
             raw_slug = f"{name.lower().replace(' ', '-').replace('/', '-')}-{place.get('place_id')}"
             slug = re.sub(r'[^a-z0-9\-]', '', raw_slug)
             
-            existing = await biz_service.business_repo.get_by_slug(slug)
+            existing = await biz_service.business_repo.get_by_slug(slug, user.id)
             if existing:
                 continue
                 
@@ -127,7 +127,7 @@ async def discover_businesses(
                 bio=f"Discovered via OpenStreetMap. Category: {place.get('type', 'unknown')}"
             )
             
-            biz = await biz_service.create_business(biz_create)
+            biz = await biz_service.create_business(biz_create, user.id)
             
             lead_create = LeadCreate(
                 business_id=biz.id,
@@ -159,7 +159,7 @@ async def list_categories(
     session: AsyncSession = Depends(get_db_session),
 ):
     service = BusinessService(session)
-    cats = await service.business_repo.get_categories()
+    cats = await service.business_repo.get_categories(user.id)
     return {"categories": cats}
 
 
@@ -169,11 +169,11 @@ async def platform_stats(
     session: AsyncSession = Depends(get_db_session),
 ):
     service = BusinessService(session)
-    total = await service.business_repo.count_total()
-    missing = await service.business_repo.count_missing_website()
+    total = await service.business_repo.count_total(user.id)
+    missing = await service.business_repo.count_missing_website(user.id)
 
     # Load up to 500 to compute average and top leads
-    _, docs = await service.list_businesses(limit=500)
+    _, docs = await service.list_businesses(limit=500, user_id=user.id)
     high = sum(1 for d in docs if d.opportunity_score >= 75)
     avg_score = int(sum(d.opportunity_score for d in docs) / max(1, len(docs)))
 
@@ -202,7 +202,7 @@ async def get_business(
     session: AsyncSession = Depends(get_db_session),
 ):
     service = BusinessService(session)
-    b = await service.business_repo.get_by_slug(slug)
+    b = await service.business_repo.get_by_slug(slug, user.id)
     if not b:
         raise HTTPException(status_code=404, detail="Business not found")
 
@@ -243,8 +243,8 @@ async def list_intelligence(
     session: AsyncSession = Depends(get_db_session),
 ):
     service = BusinessIntelligenceService(session)
-    history = await service.list_history(slug, limit=limit, offset=offset)
-    total = await service.count_history(slug)
+    history = await service.list_history(slug, limit=limit, offset=offset, user_id=user.id)
+    total = await service.count_history(slug, user_id=user.id)
     
     results = []
     for h in history:
@@ -265,7 +265,7 @@ async def get_latest_intelligence(
     session: AsyncSession = Depends(get_db_session),
 ):
     biz_service = BusinessService(session)
-    b = await biz_service.business_repo.get_by_slug(slug)
+    b = await biz_service.business_repo.get_by_slug(slug, user.id)
     if not b:
         raise HTTPException(status_code=404, detail="Business not found")
         
@@ -290,7 +290,7 @@ async def trigger_analysis(
     session: AsyncSession = Depends(get_db_session),
 ):
     service = BusinessIntelligenceService(session)
-    result = await service.trigger_analysis(slug)
+    result = await service.trigger_analysis(slug, user_id=user.id)
     
     return BusinessIntelligenceResult.model_validate({
         "id": str(result.id),
@@ -311,7 +311,7 @@ async def get_opportunity(
     session: AsyncSession = Depends(get_db_session),
 ):
     biz_service = BusinessService(session)
-    b = await biz_service.business_repo.get_by_slug(slug)
+    b = await biz_service.business_repo.get_by_slug(slug, user.id)
     if not b:
         raise HTTPException(status_code=404, detail="Business not found")
         
@@ -337,7 +337,7 @@ async def generate_opportunity(
     session: AsyncSession = Depends(get_db_session),
 ):
     service = OpportunityService(session)
-    result = await service.generate_opportunity(bi_id, slug)
+    result = await service.generate_opportunity(bi_id, slug, user_id=user.id)
     
     return OpportunityResponse.model_validate({
         "id": str(result.id),
@@ -452,7 +452,7 @@ async def generate_outreach(
     session: AsyncSession = Depends(get_db_session),
 ):
     service = ProposalService(session)
-    outreach = await service.generate_outreach(opportunity_id, slug, contact_name or "", strategy, channel)
+    outreach = await service.generate_outreach(opportunity_id, slug, contact_name or "", strategy, channel, user_id=user.id)
     return {"message": outreach}
 
 
@@ -466,7 +466,7 @@ async def create_business(
     session: AsyncSession = Depends(get_db_session),
 ):
     service = BusinessService(session)
-    return await service.create_business(payload)
+    return await service.create_business(payload, user.id)
 
 
 @router.put("/{slug}", response_model=BusinessCard)
@@ -477,7 +477,7 @@ async def update_business(
     session: AsyncSession = Depends(get_db_session),
 ):
     service = BusinessService(session)
-    return await service.update_business(slug, payload)
+    return await service.update_business(slug, payload, user.id)
 
 
 @router.delete("/{slug}", status_code=204)
@@ -487,7 +487,7 @@ async def delete_business(
     session: AsyncSession = Depends(get_db_session),
 ):
     service = BusinessService(session)
-    await service.delete_business(slug)
+    await service.delete_business(slug, user.id)
     return
 
 
@@ -500,7 +500,7 @@ async def list_contacts(
     session: AsyncSession = Depends(get_db_session),
 ):
     biz_service = BusinessService(session)
-    b = await biz_service.business_repo.get_by_slug(slug)
+    b = await biz_service.business_repo.get_by_slug(slug, user.id)
     if not b:
         raise HTTPException(status_code=404, detail="Business not found")
 
@@ -517,7 +517,7 @@ async def create_contact(
     session: AsyncSession = Depends(get_db_session),
 ):
     biz_service = BusinessService(session)
-    b = await biz_service.business_repo.get_by_slug(slug)
+    b = await biz_service.business_repo.get_by_slug(slug, user.id)
     if not b:
         raise HTTPException(status_code=404, detail="Business not found")
 
@@ -544,7 +544,7 @@ async def update_contact(
     session: AsyncSession = Depends(get_db_session),
 ):
     biz_service = BusinessService(session)
-    b = await biz_service.business_repo.get_by_slug(slug)
+    b = await biz_service.business_repo.get_by_slug(slug, user.id)
     if not b:
         raise HTTPException(status_code=404, detail="Business not found")
 
@@ -569,7 +569,7 @@ async def delete_contact(
     session: AsyncSession = Depends(get_db_session),
 ):
     biz_service = BusinessService(session)
-    b = await biz_service.business_repo.get_by_slug(slug)
+    b = await biz_service.business_repo.get_by_slug(slug, user.id)
     if not b:
         raise HTTPException(status_code=404, detail="Business not found")
 
