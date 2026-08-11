@@ -212,13 +212,17 @@ export const useGenerateOutreach = () => {
       slug,
       opportunityId,
       contactName,
+      strategy,
+      channel,
     }: {
       slug: string;
       opportunityId: string;
       contactName?: string;
+      strategy?: string;
+      channel?: string;
     }) => {
       const res = await apiClient.get(`/businesses/${slug}/opportunity/${opportunityId}/outreach`, {
-        params: { contact_name: contactName },
+        params: { contact_name: contactName, strategy, channel },
       });
       return res.data;
     },

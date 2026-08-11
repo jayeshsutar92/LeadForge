@@ -15,6 +15,13 @@ import {
 } from "@/lib/api-hooks";
 import { useState } from "react";
 import { toast } from "sonner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export const Route = createFileRoute("/outreach")({
   head: () => ({
@@ -122,6 +129,8 @@ function OutreachCard({ lead, biz }: { lead: any; biz: any }) {
   const { data: opp } = useOpportunity(biz?.slug || null, bi?.id || null);
 
   const [outreachText, setOutreachText] = useState<any | null>(null);
+  const [strategy, setStrategy] = useState("helpful_observation");
+  const [channel, setChannel] = useState("instagram");
 
   const generateOpp = useGenerateOpportunity();
   const generateOutreach = useGenerateOutreach();
@@ -140,8 +149,10 @@ function OutreachCard({ lead, biz }: { lead: any; biz: any }) {
         const data = await generateOutreach.mutateAsync({
           slug: biz.slug,
           opportunityId: currentOppId,
+          strategy,
+          channel,
         });
-        setOutreachText(data);
+        setOutreachText(data.message || data);
         toast.success("Outreach drafted successfully");
       }
     } catch (err: any) {
@@ -167,52 +178,58 @@ function OutreachCard({ lead, biz }: { lead: any; biz: any }) {
         </span>
       </div>
 
-      {outreachText && typeof outreachText === "object" && (
-        <div className="mt-3 rounded-md bg-muted/30 p-3 text-xs text-foreground whitespace-pre-wrap space-y-3 border border-border">
-          <div>
-            <span className="font-semibold text-primary">Subject Ideas:</span>
-            <ul className="list-disc pl-4 mt-1">
-              {outreachText.subject_lines?.slice(0, 2).map((s: string, i: number) => (
-                <li key={i}>{s}</li>
-              ))}
-            </ul>
-          </div>
-          <div>
-            <span className="font-semibold text-primary">Personalized Opener:</span>
-            <p className="mt-1 italic">{outreachText.personalized_opener}</p>
-          </div>
-          <div>
-            <span className="font-semibold text-primary">Draft (Value Driven):</span>
-            <p className="mt-1 bg-background p-2 rounded border border-border">
-              {outreachText.templates?.value_driven}
-            </p>
-          </div>
-        </div>
-      )}
       {outreachText && typeof outreachText === "string" && (
-        <div className="mt-3 rounded-md bg-muted/30 p-3 text-xs text-foreground whitespace-pre-wrap">
+        <div className="mt-3 rounded-md bg-muted/30 p-3 text-xs text-foreground whitespace-pre-wrap border border-border">
           {outreachText}
         </div>
       )}
 
-      <div className="mt-3 flex items-center justify-between border-t border-border/50 pt-3">
-        <p className="text-xs text-muted-foreground line-clamp-1 flex-1 mr-3">
-          {lead.notes || "No notes available."}
-        </p>
-        <Button
-          variant={outreachText ? "outline" : "default"}
-          size="sm"
-          className="h-7 text-xs shrink-0"
-          onClick={handleGenerate}
-          disabled={isGenerating || !bi?.id}
-        >
-          {isGenerating ? (
-            <Loader2 className="size-3 mr-1 animate-spin" />
-          ) : (
-            <Mail className="size-3 mr-1" />
-          )}
-          {isGenerating ? "Drafting..." : outreachText ? "Re-draft" : "Draft Outreach"}
-        </Button>
+      <div className="mt-3 space-y-3 border-t border-border/50 pt-3">
+        <div className="flex gap-2">
+          <Select value={strategy} onValueChange={setStrategy}>
+            <SelectTrigger className="h-7 text-xs w-[180px]">
+              <SelectValue placeholder="Strategy" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="helpful_observation">Helpful Observation</SelectItem>
+              <SelectItem value="business_growth">Business Growth</SelectItem>
+              <SelectItem value="website_improvement">Website Improvement</SelectItem>
+              <SelectItem value="problem_solver">Problem Solver</SelectItem>
+              <SelectItem value="founder_to_business">Founder-to-Business</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={channel} onValueChange={setChannel}>
+            <SelectTrigger className="h-7 text-xs w-[130px]">
+              <SelectValue placeholder="Channel" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="instagram">Instagram DM</SelectItem>
+              <SelectItem value="facebook">Facebook Message</SelectItem>
+              <SelectItem value="whatsapp">WhatsApp</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-muted-foreground line-clamp-1 flex-1 mr-3">
+            {lead.notes || "No notes available."}
+          </p>
+          <Button
+            variant={outreachText ? "outline" : "default"}
+            size="sm"
+            className="h-7 text-xs shrink-0"
+            onClick={handleGenerate}
+            disabled={isGenerating || !bi?.id}
+          >
+            {isGenerating ? (
+              <Loader2 className="size-3 mr-1 animate-spin" />
+            ) : (
+              <Mail className="size-3 mr-1" />
+            )}
+            {isGenerating ? "Drafting..." : outreachText ? "Re-draft" : "Draft Outreach"}
+          </Button>
+        </div>
       </div>
     </li>
   );
