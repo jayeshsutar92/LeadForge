@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import re
 import httpx
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from urllib.parse import quote_plus
 from typing import Optional
 from uuid import UUID
@@ -40,6 +40,7 @@ class DiscoverResponse(BaseModel):
     message: str
     found: int
     new_leads: int
+    results: list[BusinessCard] = Field(default_factory=list)
 
 router = APIRouter()
 
@@ -102,6 +103,7 @@ async def discover_businesses(
     bi_service = BusinessIntelligenceService(session)
     
     new_leads = 0
+    discovered_cards = []
     
     for place in valid_results:
         try:
@@ -111,6 +113,7 @@ async def discover_businesses(
             
             existing = await biz_service.business_repo.get_by_slug(slug, user.id)
             if existing:
+                discovered_cards.append(biz_service._to_card(existing))
                 continue
                 
             extratags = place.get("extratags") or {}
@@ -123,7 +126,7 @@ async def discover_businesses(
             biz_create = BusinessCreate(
                 name=name,
                 slug=slug,
-                category=payload.query,
+                category=payload.query.lower(),
                 city=city,
                 country=country,
                 website=website,
@@ -131,9 +134,10 @@ async def discover_businesses(
             )
             
             biz = await biz_service.create_business(biz_create, user.id)
+            discovered_cards.append(biz)
             
             lead_create = LeadCreate(
-                business_id=biz.id,
+                business_id=UUID(biz.id),
                 source="Discovery Scan",
                 notes=f"Discovered scanning for {payload.query} in {payload.region}"
             )
@@ -152,7 +156,8 @@ async def discover_businesses(
     return DiscoverResponse(
         message=f"Found {len(valid_results)} businesses, processed {new_leads} new leads.",
         found=len(valid_results),
-        new_leads=new_leads
+        new_leads=new_leads,
+        results=discovered_cards
     )
 
 

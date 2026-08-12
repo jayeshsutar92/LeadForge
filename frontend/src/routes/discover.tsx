@@ -66,11 +66,13 @@ function Discover() {
     message: string;
     found: number;
     processed: number;
+    results: any[];
   }>({
     active: false,
     message: "",
     found: 0,
     processed: 0,
+    results: [],
   });
 
   const {
@@ -91,6 +93,7 @@ function Discover() {
       message: "Querying external business database...",
       found: 0,
       processed: 0,
+      results: [],
     });
 
     try {
@@ -104,6 +107,7 @@ function Discover() {
         found: result.found,
         processed: result.found, // all processed on backend
         message: result.message,
+        results: result.results || [],
       }));
 
       toast.success("Scan completed successfully", {
@@ -130,6 +134,8 @@ function Discover() {
         avgScore: stats.avg_score || 0,
       }))
     : [];
+
+  const displayBusinesses = scanState.results.length > 0 ? scanState.results : (businessesData?.results || []);
 
   return (
     <AppShell
@@ -289,8 +295,8 @@ function Discover() {
                 }
               />
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                {businessesData?.results && businessesData.results.length > 0 ? (
-                  businessesData.results.map((b) => (
+                {displayBusinesses.length > 0 ? (
+                  displayBusinesses.map((b: any) => (
                     <article
                       key={b.id}
                       className="panel p-4 transition-colors hover:border-border-strong flex flex-col"

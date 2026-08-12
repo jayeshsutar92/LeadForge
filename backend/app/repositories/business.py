@@ -88,7 +88,7 @@ class BusinessRepository:
                 )
             )
         if category and category != "All":
-            statement = statement.where(Business.category == category)
+            statement = statement.where(Business.category.ilike(category))
         if city:
             statement = statement.where(Business.city.ilike(f"%{city}%"))
         if website_status == "has":
