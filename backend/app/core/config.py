@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     debug: bool = Field(default=False, validation_alias="APP_DEBUG")
     database_url: str = Field(
-        default="postgresql+asyncpg://postgres:Abc123%24%2545@db:5432/leadforge",
+        default="postgresql+asyncpg://postgres:postgres@localhost:5432/leadforge",
         validation_alias="DATABASE_URL",
     )
     sql_echo: bool = Field(default=False, validation_alias="SQL_ECHO")

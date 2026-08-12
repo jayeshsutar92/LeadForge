@@ -4,7 +4,7 @@ from app.main import app
 
 def test_security_headers():
     async def _run():
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://localhost") as ac:
             response = await ac.get("/api")
             assert response.status_code == 200
             assert response.headers.get("x-content-type-options") == "nosniff"
@@ -14,7 +14,7 @@ def test_security_headers():
 
 def test_health_endpoints():
     async def _run():
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://localhost") as ac:
             response = await ac.get("/api/health/liveness")
             assert response.status_code == 200
             assert response.json() == {"status": "ok"}

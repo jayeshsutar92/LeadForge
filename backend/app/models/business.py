@@ -12,7 +12,7 @@ from app.models.mixins import TimestampMixin, UUIDPrimaryKeyMixin
 class Business(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "businesses"
     __table_args__ = (
-        Index("ix_businesses_slug", "slug", unique=True),
+        Index("ix_businesses_slug_user", "slug", "user_id", unique=True),
         Index("ix_businesses_category", "category"),
         Index("ix_businesses_user_id", "user_id"),
     )

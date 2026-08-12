@@ -6,10 +6,10 @@ ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy
 
 COPY pyproject.toml uv.lock ./
-RUN uv sync --locked --no-dev --no-install-project
+RUN uv sync --locked --no-install-project
 
 COPY . .
-RUN uv sync --locked --no-dev
+RUN uv sync --locked
 
 FROM python:3.13-slim AS runtime
 WORKDIR /app
@@ -27,6 +27,7 @@ COPY --from=builder --chown=app:app /app/app ./app
 COPY --from=builder --chown=app:app /app/alembic ./alembic
 COPY --from=builder --chown=app:app /app/alembic.ini ./alembic.ini
 COPY --from=builder --chown=app:app /app/pyproject.toml ./pyproject.toml
+COPY --from=builder --chown=app:app /app/tests ./tests
 
 USER app
 EXPOSE 8000

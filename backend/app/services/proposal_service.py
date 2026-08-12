@@ -102,7 +102,7 @@ class ProposalService:
             logger.error(f"AI generation failed for proposal: {e}")
             raise ValueError(f"AI generation failed: {e}")
 
-    async def generate_proposal(self, opportunity_id: UUID, template_type: str = "standard") -> Proposal:
+    async def generate_proposal(self, opportunity_id: UUID, template_type: str = "standard", user_id: str | None = None) -> Proposal:
         opp = await self.opp_repo.get_by_id(opportunity_id)
         if not opp:
             raise HTTPException(status_code=404, detail="Opportunity not found")
@@ -113,7 +113,7 @@ class ProposalService:
         bi = await self.bi_repo.get_by_id(opp.business_intelligence_id)
         business_name = ""
         if bi:
-            business = await self.business_repo.get_by_id(bi.business_id)
+            business = await self.business_repo.get_by_id(bi.business_id, user_id=user_id)
             if business:
                 business_name = business.name
         

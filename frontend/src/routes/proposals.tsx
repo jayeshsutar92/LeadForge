@@ -245,9 +245,7 @@ function ProposalCard({ lead, biz }: { lead: any; biz: any }) {
                   </div>
                 </DialogContent>
               </Dialog>
-              <Button variant="outline" size="sm">
-                Edit
-              </Button>
+
             </>
           ) : (
             <Button size="sm" onClick={handleGenerate} disabled={isGenerating || !bi?.id}>

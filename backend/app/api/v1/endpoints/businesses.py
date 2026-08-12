@@ -80,7 +80,7 @@ async def discover_businesses(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
 ):
-    query_str = quote_plus(f"{payload.query} in {payload.region}")
+    query_str = quote_plus(f"{payload.query} {payload.region}")
     url = f"https://nominatim.openstreetmap.org/search?q={query_str}&format=json&extratags=1&addressdetails=1&limit=10"
     
     try:
@@ -88,11 +88,14 @@ async def discover_businesses(
             res = await client.get(url, headers={"User-Agent": "LeadForgeBackend/1.0"}, timeout=15.0)
             res.raise_for_status()
             results = res.json()
+            logger.info(f"Discovery URL: {url} returned {len(results)} raw results.")
     except Exception as e:
         logger.error(f"Discovery API failed: {e}")
         raise HTTPException(status_code=502, detail="External discovery service failed")
 
     valid_results = [r for r in results if r.get("name")]
+    if not valid_results:
+        logger.warning(f"Nominatim returned {results}")
     
     biz_service = BusinessService(session)
     crm_service = CRMService(session)
@@ -137,7 +140,7 @@ async def discover_businesses(
             await crm_service.create_lead(lead_create, current_user_id=user.id)
             
             try:
-                await bi_service.trigger_analysis(biz.slug)
+                await bi_service.trigger_analysis(biz.slug, user.id)
             except Exception as e:
                 logger.error(f"Failed to trigger analysis for {biz.slug}: {e}")
             
@@ -381,7 +384,7 @@ async def generate_proposal(
     session: AsyncSession = Depends(get_db_session),
 ):
     service = ProposalService(session)
-    proposal = await service.generate_proposal(opportunity_id, template_type=template_type)
+    proposal = await service.generate_proposal(opportunity_id, template_type=template_type, user_id=user.id)
     
     return ProposalResponse.model_validate({
         "id": str(proposal.id),

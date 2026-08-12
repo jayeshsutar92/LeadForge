@@ -138,10 +138,7 @@ function LeadsPage() {
                 className="h-9 pl-9"
               />
             </div>
-            <Button variant="outline" size="sm" className="h-9 shrink-0">
-              <SlidersHorizontal className="size-4" />
-              Filters
-            </Button>
+
             <Tabs
               value={filter}
               onValueChange={(v) => setFilter(v as LeadStatus | "all")}

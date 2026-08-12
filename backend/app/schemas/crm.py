@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, AliasChoices
 
 
 # ─── Activity Schemas ─────────────────────────────────────────────────────────
@@ -12,7 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class ActivityBase(BaseModel):
     activity_type: str = Field(..., description="Type of activity (e.g., call, email, note, stage_change)")
     description: str = Field(..., description="Description of the activity")
-    metadata_: dict[str, Any] = Field(default_factory=dict, alias="metadata")
+    metadata_: dict[str, Any] = Field(default_factory=dict, validation_alias=AliasChoices("metadata_", "metadata"), serialization_alias="metadata")
 
 
 class ActivityCreate(ActivityBase):
