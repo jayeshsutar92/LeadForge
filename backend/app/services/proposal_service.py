@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.redis import build_redis_key, get_redis_client
 from app.models.proposal import Proposal
+from app.models.opportunity import Opportunity
 from app.repositories.opportunity import OpportunityRepository
 from app.repositories.proposal import ProposalRepository
 from app.services.analysis.outreach_generator import generate_outreach
@@ -29,6 +30,33 @@ class ProposalService:
         self.bi_repo = BusinessIntelligenceRepository(session)
         self.business_repo = BusinessRepository(session)
         self.redis = get_redis_client()
+
+    async def _verify_ownership(self, proposal_id: UUID, user_id: UUID) -> Proposal:
+        proposal = await self.repo.get_by_id(proposal_id)
+        if not proposal:
+            raise HTTPException(status_code=404, detail="Proposal not found")
+        opp = await self.opp_repo.get_by_id(proposal.opportunity_id)
+        if not opp:
+            raise HTTPException(status_code=404, detail="Opportunity not found")
+        bi = await self.bi_repo.get_by_id(opp.business_intelligence_id)
+        if not bi:
+            raise HTTPException(status_code=404, detail="Intelligence not found")
+        business = await self.business_repo.get_by_id(bi.business_id, user_id)
+        if not business:
+            raise HTTPException(status_code=404, detail="Proposal not found")
+        return proposal
+
+    async def _verify_opp_ownership(self, opportunity_id: UUID, user_id: UUID) -> Opportunity:
+        opp = await self.opp_repo.get_by_id(opportunity_id)
+        if not opp:
+            raise HTTPException(status_code=404, detail="Opportunity not found")
+        bi = await self.bi_repo.get_by_id(opp.business_intelligence_id)
+        if not bi:
+            raise HTTPException(status_code=404, detail="Intelligence not found")
+        business = await self.business_repo.get_by_id(bi.business_id, user_id)
+        if not business:
+            raise HTTPException(status_code=404, detail="Opportunity not found")
+        return opp
 
     def _cache_key(self, opportunity_id: str) -> str:
         return build_redis_key("proposal", opportunity_id)
@@ -102,10 +130,13 @@ class ProposalService:
             logger.error(f"AI generation failed for proposal: {e}")
             raise ValueError(f"AI generation failed: {e}")
 
-    async def generate_proposal(self, opportunity_id: UUID, template_type: str = "standard", user_id: str | None = None) -> Proposal:
-        opp = await self.opp_repo.get_by_id(opportunity_id)
-        if not opp:
-            raise HTTPException(status_code=404, detail="Opportunity not found")
+    async def generate_proposal(self, opportunity_id: UUID, template_type: str = "standard", user_id: UUID | None = None) -> Proposal:
+        if user_id:
+            opp = await self._verify_opp_ownership(opportunity_id, user_id)
+        else:
+            opp = await self.opp_repo.get_by_id(opportunity_id)
+            if not opp:
+                raise HTTPException(status_code=404, detail="Opportunity not found")
             
         latest = await self.repo.get_latest_by_opportunity(opportunity_id)
         version = latest.version + 1 if latest else 1
@@ -126,10 +157,13 @@ class ProposalService:
         
         return proposal
 
-    async def update_proposal(self, proposal_id: UUID, content: dict) -> Proposal:
-        proposal = await self.repo.get_by_id(proposal_id)
-        if not proposal:
-            raise HTTPException(status_code=404, detail="Proposal not found")
+    async def update_proposal(self, proposal_id: UUID, content: dict, user_id: UUID | None = None) -> Proposal:
+        if user_id:
+            proposal = await self._verify_ownership(proposal_id, user_id)
+        else:
+            proposal = await self.repo.get_by_id(proposal_id)
+            if not proposal:
+                raise HTTPException(status_code=404, detail="Proposal not found")
             
         # Create a new version
         new_version = proposal.version + 1
@@ -143,10 +177,13 @@ class ProposalService:
     async def list_history(self, opportunity_id: UUID, limit: int = 10, offset: int = 0) -> list[Proposal]:
         return await self.repo.list_by_opportunity(opportunity_id, limit=limit, offset=offset)
 
-    async def delete_proposal(self, proposal_id: UUID) -> None:
-        proposal = await self.repo.get_by_id(proposal_id)
-        if not proposal:
-            raise HTTPException(status_code=404, detail="Proposal not found")
+    async def delete_proposal(self, proposal_id: UUID, user_id: UUID | None = None) -> None:
+        if user_id:
+            proposal = await self._verify_ownership(proposal_id, user_id)
+        else:
+            proposal = await self.repo.get_by_id(proposal_id)
+            if not proposal:
+                raise HTTPException(status_code=404, detail="Proposal not found")
             
         await self.repo.delete(proposal_id)
         
@@ -158,10 +195,13 @@ class ProposalService:
         else:
             await self.redis.delete(key)
 
-    async def export_proposal(self, proposal_id: UUID, format: str = "markdown") -> str:
-        proposal = await self.repo.get_by_id(proposal_id)
-        if not proposal:
-            raise HTTPException(status_code=404, detail="Proposal not found")
+    async def export_proposal(self, proposal_id: UUID, format: str = "markdown", user_id: UUID | None = None) -> str:
+        if user_id:
+            proposal = await self._verify_ownership(proposal_id, user_id)
+        else:
+            proposal = await self.repo.get_by_id(proposal_id)
+            if not proposal:
+                raise HTTPException(status_code=404, detail="Proposal not found")
             
         c = proposal.content
         if format == "markdown":
@@ -183,13 +223,20 @@ class ProposalService:
     async def generate_outreach(self, opportunity_id: UUID, business_slug: str, contact_name: str, strategy: str, channel: str, user_id: UUID | None = None) -> str:
         """Generate a personalized outreach message."""
         # 1. Fetch data
-        opp = await self.get_latest(opportunity_id)  # Returns Proposal or None, wait, actually we just need opp data
-        # Actually it's opp data, wait, we don't fetch opp here, we fetch it below. Let's just pass user_id.
+        if user_id:
+            try:
+                opp = await self._verify_opp_ownership(opportunity_id, user_id)
+            except HTTPException:
+                raise ValueError("Opportunity not found")
+        else:
+            opp = await self.opp_repo.get_by_id(opportunity_id)
+            if not opp:
+                raise ValueError("Opportunity not found")
+        
         business = await self.business_repo.get_by_slug(business_slug, user_id)
         if not business:
             raise HTTPException(status_code=404, detail="Business not found")
             
-        opp = await self.opp_repo.get_by_id(opportunity_id)
         if not opp:
             raise HTTPException(status_code=404, detail="Opportunity not found")
             

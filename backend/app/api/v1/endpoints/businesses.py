@@ -324,7 +324,7 @@ async def get_opportunity(
         raise HTTPException(status_code=404, detail="Business not found")
         
     service = OpportunityService(session)
-    result = await service.get_latest(bi_id)
+    result = await service.get_latest(bi_id, user_id=user.id)
     if not result:
         raise HTTPException(status_code=404, detail="No opportunity data found")
         
@@ -366,7 +366,7 @@ async def get_latest_proposal(
     session: AsyncSession = Depends(get_db_session),
 ):
     service = ProposalService(session)
-    proposal = await service.get_latest(opportunity_id)
+    proposal = await service.get_latest(opportunity_id, user_id=user.id)
     if not proposal:
         raise HTTPException(status_code=404, detail="Proposal not found")
         
@@ -410,7 +410,7 @@ async def update_proposal(
     session: AsyncSession = Depends(get_db_session),
 ):
     service = ProposalService(session)
-    proposal = await service.update_proposal(proposal_id, content)
+    proposal = await service.update_proposal(proposal_id, content, user_id=user.id)
     
     return ProposalResponse.model_validate({
         "id": str(proposal.id),
@@ -430,7 +430,7 @@ async def delete_proposal(
     session: AsyncSession = Depends(get_db_session),
 ):
     service = ProposalService(session)
-    await service.delete_proposal(proposal_id)
+    await service.delete_proposal(proposal_id, user_id=user.id)
     return
 
 
@@ -443,7 +443,7 @@ async def export_proposal(
     session: AsyncSession = Depends(get_db_session),
 ):
     service = ProposalService(session)
-    exported = await service.export_proposal(proposal_id, format=format)
+    exported = await service.export_proposal(proposal_id, format=format, user_id=user.id)
     return {"format": format, "data": exported}
 
 
@@ -460,7 +460,14 @@ async def generate_outreach(
     session: AsyncSession = Depends(get_db_session),
 ):
     service = ProposalService(session)
-    outreach = await service.generate_outreach(opportunity_id, slug, contact_name or "", strategy, channel, user_id=user.id)
+    outreach = await service.generate_outreach(
+        opportunity_id,
+        slug,
+        contact_name=contact_name or "",
+        strategy=strategy,
+        channel=channel,
+        user_id=user.id
+    )
     return {"message": outreach}
 
 
