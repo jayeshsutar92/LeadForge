@@ -21,6 +21,8 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    restart: "no"
+    stop_signal: SIGINT
     healthcheck:
       test: [ "CMD", "redis-cli", "ping" ]
       interval: 5s
