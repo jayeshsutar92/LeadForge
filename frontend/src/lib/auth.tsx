@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "@tanstack/react-router";
 import { apiClient } from "./api";
 
 export interface User {
@@ -22,6 +24,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const router = useRouter();
 
   useEffect(() => {
     checkAuth();
@@ -38,6 +42,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error("Auth check failed:", error);
       setUser(null);
       localStorage.removeItem("leadforge_token");
+      queryClient.clear();
+      router.invalidate();
     } finally {
       setIsLoading(false);
     }
@@ -48,6 +54,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { access_token, ...userData } = response.data;
     localStorage.setItem("leadforge_token", access_token);
     setUser(userData);
+    queryClient.clear();
+    router.invalidate();
   };
 
   const register = async (credentials: any) => {
@@ -55,6 +63,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { access_token, ...userData } = response.data;
     localStorage.setItem("leadforge_token", access_token);
     setUser(userData);
+    queryClient.clear();
+    router.invalidate();
   };
 
   const logout = async () => {
@@ -65,6 +75,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     localStorage.removeItem("leadforge_token");
     setUser(null);
+    queryClient.clear();
+    router.invalidate();
   };
 
   return (
