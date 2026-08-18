@@ -127,6 +127,7 @@ function RootShell({ children }: { children: ReactNode }) {
 }
 
 import { AuthProvider, useAuth } from "../lib/auth";
+import { ThemeProvider } from "../components/theme-provider";
 import { useRouterState } from "@tanstack/react-router";
 
 function AuthWrapper({ children }: { children: ReactNode }) {
@@ -163,11 +164,13 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <AuthWrapper>
-          <Outlet />
-        </AuthWrapper>
-      </AuthProvider>
+      <ThemeProvider defaultTheme="dark" storageKey="leadforge-theme">
+        <AuthProvider>
+          <AuthWrapper>
+            <Outlet />
+          </AuthWrapper>
+        </AuthProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

@@ -66,6 +66,61 @@
 :root {
   --radius: 0.625rem;
 
+  --background: oklch(0.98 0.012 250);
+  --foreground: oklch(0.17 0.012 250);
+  --surface: oklch(1 0 0);
+  --surface-raised: oklch(0.97 0.01 250);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.17 0.012 250);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.17 0.012 250);
+
+  --primary: oklch(0.87 0.21 128);
+  --primary-foreground: oklch(0.21 0.05 130);
+  --primary-soft: oklch(0.93 0.06 130);
+
+  --secondary: oklch(0.95 0.01 250);
+  --secondary-foreground: oklch(0.26 0.014 250);
+  --muted: oklch(0.95 0.01 250);
+  --muted-foreground: oklch(0.45 0.016 250);
+  --accent: oklch(0.95 0.01 250);
+  --accent-foreground: oklch(0.17 0.012 250);
+
+  --destructive: oklch(0.65 0.2 22);
+  --destructive-foreground: oklch(0.99 0 0);
+  --warning: oklch(0.8 0.15 78);
+  --warning-foreground: oklch(0.24 0.04 78);
+  --success: oklch(0.75 0.16 155);
+  --success-foreground: oklch(0.22 0.05 155);
+  --info: oklch(0.72 0.12 240);
+  --info-foreground: oklch(0.2 0.04 240);
+
+  --border: oklch(0 0 0 / 12%);
+  --border-strong: oklch(0 0 0 / 22%);
+  --input: oklch(0 0 0 / 15%);
+  --ring: oklch(0.87 0.21 128 / 60%);
+
+  --chart-1: oklch(0.87 0.21 128);
+  --chart-2: oklch(0.72 0.12 240);
+  --chart-3: oklch(0.8 0.15 78);
+  --chart-4: oklch(0.7 0.14 320);
+  --chart-5: oklch(0.75 0.16 190);
+
+  --sidebar: oklch(0.98 0.012 250);
+  --sidebar-foreground: oklch(0.26 0.014 250);
+  --sidebar-accent: oklch(0.95 0.01 250);
+  --sidebar-accent-foreground: oklch(0.17 0.012 250);
+  --sidebar-border: oklch(0 0 0 / 12%);
+
+  --shadow-panel: 0 10px 30px -15px oklch(0 0 0 / 15%);
+  --gradient-glow: radial-gradient(
+    120% 120% at 0% 0%,
+    color-mix(in oklab, var(--primary) 15%, transparent),
+    transparent 60%
+  );
+}
+
+.dark {
   --background: oklch(0.17 0.012 250);
   --foreground: oklch(0.97 0.004 250);
   --surface: oklch(0.2 0.013 250);
@@ -126,6 +181,10 @@
   }
 
   html {
+    color-scheme: light;
+  }
+  
+  html.dark {
     color-scheme: dark;
   }
 

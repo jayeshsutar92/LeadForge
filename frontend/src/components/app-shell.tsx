@@ -17,6 +17,7 @@ import type { ReactNode } from "react";
 import { useAuth } from "@/lib/auth";
 
 import { Button } from "@/components/ui/button";
+import { ModeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 
 const nav = [
@@ -101,6 +102,7 @@ export function AppShell({
               >
                 <Bell className="size-4" />
               </Button>
+              <ModeToggle />
               {actions}
             </div>
           </div>
