@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import re
 import httpx
+import asyncio
 from pydantic import BaseModel, Field
 from urllib.parse import quote_plus
 from typing import Optional
@@ -149,6 +150,7 @@ async def discover_businesses(
             
             try:
                 await bi_service.trigger_analysis(biz.slug, user.id)
+                await asyncio.sleep(1.5) # Prevent rate-limiting on burst discovery
             except Exception as e:
                 logger.error(f"Failed to trigger analysis for {biz.slug}: {e}")
             

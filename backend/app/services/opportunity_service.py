@@ -69,6 +69,11 @@ class OpportunityService:
         if bi.business_id != business.id:
             raise HTTPException(status_code=400, detail="Business Intelligence record does not belong to this business")
             
+        # Idempotency check: see if we already have an opportunity for this BI record
+        existing_opp = await self.repo.get_latest_by_business_intelligence(bi.id)
+        if existing_opp:
+            return existing_opp
+            
         # Run AI opportunity generation
         opp_data = await generate_opportunity(bi.data, business.name)
         

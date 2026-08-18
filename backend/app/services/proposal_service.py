@@ -142,8 +142,10 @@ class ProposalService:
                 raise HTTPException(status_code=404, detail="Opportunity not found")
             
         latest = await self.repo.get_latest_by_opportunity(opportunity_id)
-        version = latest.version + 1 if latest else 1
-        
+        if latest:
+            return latest
+            
+        version = 1
         bi = await self.bi_repo.get_by_id(opp.business_intelligence_id)
         business_name = ""
         if bi:
@@ -243,4 +245,12 @@ class ProposalService:
         if not opp:
             raise HTTPException(status_code=404, detail="Opportunity not found")
             
-        return await generate_outreach(business.name, opp.data, contact_name, strategy, channel)
+        # Check cache
+        cache_key = f"outreach:{opportunity_id}:{contact_name}:{strategy}:{channel}"
+        cached = await self.redis.get(cache_key)
+        if cached:
+            return cached.decode("utf-8") if isinstance(cached, bytes) else cached
+            
+        outreach_text = await generate_outreach(business.name, opp.data, contact_name, strategy, channel)
+        await self.redis.set(cache_key, outreach_text, ex=_PROPOSAL_CACHE_TTL)
+        return outreach_text

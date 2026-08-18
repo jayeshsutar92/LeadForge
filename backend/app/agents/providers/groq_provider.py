@@ -2,8 +2,9 @@ import json
 import logging
 from typing import Any, Dict
 
-from groq import AsyncGroq
+from groq import AsyncGroq, RateLimitError
 from groq.types.chat import ChatCompletion
+from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception_type
 
 from app.agents.providers.base import LLMProvider
 
@@ -30,6 +31,12 @@ class GroqProvider(LLMProvider):
             max_retries=self.config.get("ai_max_retries", 2),
         )
 
+    @retry(
+        wait=wait_exponential(multiplier=1.5, min=2, max=10),
+        stop=stop_after_attempt(4),
+        retry=retry_if_exception_type(RateLimitError),
+        reraise=True
+    )
     async def generate(self, prompt: str, **kwargs) -> str:
         """Generate text from a prompt."""
         try:
@@ -45,10 +52,19 @@ class GroqProvider(LLMProvider):
                 max_completion_tokens=kwargs.get("max_tokens", self.max_tokens),
             )
             return response.choices[0].message.content or ""
+        except RateLimitError as e:
+            logger.warning(f"Groq rate limit exceeded (generate): {str(e)}. Retrying...")
+            raise
         except Exception as e:
             logger.error(f"Groq API error (generate): {str(e)}")
             raise RuntimeError(f"Failed to generate text from Groq: {str(e)}")
 
+    @retry(
+        wait=wait_exponential(multiplier=1.5, min=2, max=10),
+        stop=stop_after_attempt(4),
+        retry=retry_if_exception_type(RateLimitError),
+        reraise=True
+    )
     async def generate_json(self, prompt: str, schema: Dict[str, Any] | None = None, **kwargs) -> Dict[str, Any]:
         """Generate a structured JSON response."""
         try:
@@ -78,6 +94,9 @@ class GroqProvider(LLMProvider):
         except json.JSONDecodeError as e:
             logger.error(f"Groq JSON parse error: {str(e)}\nContent: {content}")
             raise ValueError(f"Failed to parse JSON response from Groq: {str(e)}")
+        except RateLimitError as e:
+            logger.warning(f"Groq rate limit exceeded (generate_json): {str(e)}. Retrying...")
+            raise
         except Exception as e:
             logger.error(f"Groq API error (generate_json): {str(e)}")
             raise RuntimeError(f"Failed to generate JSON from Groq: {str(e)}")
