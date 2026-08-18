@@ -14,8 +14,8 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (credentials: any) => Promise<void>;
-  register: (credentials: any) => Promise<void>;
+  login: (credentials: Record<string, unknown>) => Promise<void>;
+  register: (credentials: Record<string, unknown>) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -28,28 +28,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    checkAuth();
-  }, []);
-
-  const checkAuth = async () => {
-    try {
-      const token = localStorage.getItem("leadforge_token");
-      if (token) {
-        const response = await apiClient.get("/auth/me");
-        setUser(response.data);
+    const checkAuth = async () => {
+      try {
+        const token = localStorage.getItem("leadforge_token");
+        if (token) {
+          const response = await apiClient.get("/auth/me");
+          setUser(response.data);
+        }
+      } catch (error) {
+        console.error("Auth check failed:", error);
+        setUser(null);
+        localStorage.removeItem("leadforge_token");
+        queryClient.clear();
+        router.invalidate();
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error("Auth check failed:", error);
-      setUser(null);
-      localStorage.removeItem("leadforge_token");
-      queryClient.clear();
-      router.invalidate();
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    };
+    checkAuth();
+  }, [queryClient, router]);
 
-  const login = async (credentials: any) => {
+  const login = async (credentials: Record<string, unknown>) => {
     const response = await apiClient.post("/auth/login", credentials);
     const { access_token, ...userData } = response.data;
     localStorage.setItem("leadforge_token", access_token);
@@ -58,7 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.invalidate();
   };
 
-  const register = async (credentials: any) => {
+  const register = async (credentials: Record<string, unknown>) => {
     const response = await apiClient.post("/auth/register", credentials);
     const { access_token, ...userData } = response.data;
     localStorage.setItem("leadforge_token", access_token);

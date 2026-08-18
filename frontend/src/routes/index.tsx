@@ -49,7 +49,7 @@ function Overview() {
       const count = stageLeads.length;
       let stageValue = 0;
       for (const lead of stageLeads) {
-        const biz = businessesData?.results?.find(b => b.id === lead.business_id);
+        const biz = businessesData?.results?.find((b) => b.id === lead.business_id);
         stageValue += (biz?.opportunity_score || 70) * 120;
       }
       return {
@@ -135,7 +135,7 @@ function Overview() {
               </div>
             ) : (
               <ul className="divide-y divide-border">
-                {top.map((lead: any) => (
+                {top.map((lead: Record<string, unknown>) => (
                   <li
                     key={lead.id}
                     className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-5 py-3"
@@ -216,8 +216,9 @@ function Overview() {
               <ul className="space-y-4 mt-2">
                 {recentLeads.map((lead) => {
                   const bName =
-                    businessesData?.results?.find((b: any) => b.id === lead.business_id)?.name ||
-                    "Lead";
+                    businessesData?.results?.find(
+                      (b: Record<string, unknown>) => b.id === lead.business_id,
+                    )?.name || "Lead";
                   return (
                     <li key={lead.id} className="flex gap-3">
                       <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-primary-soft text-primary">
@@ -229,7 +230,8 @@ function Overview() {
                           <span className="text-muted-foreground">was discovered via scan</span>
                         </p>
                         <p className="text-[11px] text-muted-foreground uppercase">
-                          {lead.status} · {lead.created_at ? new Date(lead.created_at).toLocaleTimeString() : "N/A"}
+                          {lead.status} ·{" "}
+                          {lead.created_at ? new Date(lead.created_at).toLocaleTimeString() : "N/A"}
                         </p>
                       </div>
                     </li>

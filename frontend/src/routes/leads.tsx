@@ -21,7 +21,13 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCurrency, statusMeta, type LeadStatus } from "@/lib/ui-utils";
 import { cn } from "@/lib/utils";
-import { useLeads, useBusinesses, useLeadDetail, useBusinessDetail, useUpdateLead } from "@/lib/api-hooks";
+import {
+  useLeads,
+  useBusinesses,
+  useLeadDetail,
+  useBusinessDetail,
+  useUpdateLead,
+} from "@/lib/api-hooks";
 import {
   Select,
   SelectContent,
@@ -346,11 +352,15 @@ function LeadsPage() {
                   </dl>
 
                   <div className="flex gap-2">
-                    <Button className="flex-1" onClick={() => navigate({ to: '/proposals' })}>
+                    <Button className="flex-1" onClick={() => navigate({ to: "/proposals" })}>
                       <Sparkles className="size-4" />
                       Draft proposal
                     </Button>
-                    <Button variant="outline" className="flex-1" onClick={() => navigate({ to: '/outreach' })}>
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => navigate({ to: "/outreach" })}
+                    >
                       Start outreach
                     </Button>
                   </div>

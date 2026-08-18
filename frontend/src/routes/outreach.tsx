@@ -48,9 +48,7 @@ function Outreach() {
   const contactedLeads = useMemo(() => {
     if (!leadsData?.results || !businessesData?.results) return [];
     return leadsData.results
-      .filter(
-        (l) => ["new", "qualified", "contacted", "negotiating"].includes(l.status),
-      )
+      .filter((l) => ["new", "qualified", "contacted", "negotiating"].includes(l.status))
       .map((lead) => {
         const biz = businessesData.results.find((b) => b.id === lead.business_id);
         return { lead, biz };
@@ -129,11 +127,17 @@ function Outreach() {
   );
 }
 
-function OutreachCard({ lead, biz }: { lead: any; biz: any }) {
+function OutreachCard({
+  lead,
+  biz,
+}: {
+  lead: Record<string, unknown>;
+  biz: Record<string, unknown>;
+}) {
   const { data: bi } = useIntelligence(biz?.slug || null);
   const { data: opp } = useOpportunity(biz?.slug || null, bi?.id || null);
 
-  const [outreachText, setOutreachText] = useState<any | null>(null);
+  const [outreachText, setOutreachText] = useState<Record<string, unknown> | null>(null);
   const [strategy, setStrategy] = useState("helpful_observation");
   const [channel, setChannel] = useState("instagram");
 
@@ -164,7 +168,7 @@ function OutreachCard({ lead, biz }: { lead: any; biz: any }) {
           await updateLead.mutateAsync({ id: lead.id, data: { status: "contacted" } });
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error(
         err.response?.data?.detail?.message ||
           err.response?.data?.error?.message ||
@@ -219,7 +223,7 @@ function OutreachCard({ lead, biz }: { lead: any; biz: any }) {
             </SelectContent>
           </Select>
         </div>
-        
+
         <div className="flex items-center justify-between">
           <p className="text-xs text-muted-foreground line-clamp-1 flex-1 mr-3">
             {lead.notes || "No notes available."}

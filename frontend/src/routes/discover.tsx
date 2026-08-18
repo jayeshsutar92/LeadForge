@@ -11,11 +11,7 @@ import { SectionHeader, StatCard } from "@/components/leadforge-ui";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  useBusinessStats,
-  useBusinesses,
-  useDiscoverBusinesses,
-} from "@/lib/api-hooks";
+import { useBusinessStats, useBusinesses, useDiscoverBusinesses } from "@/lib/api-hooks";
 
 export const Route = createFileRoute("/discover")({
   head: () => ({
@@ -66,7 +62,7 @@ function Discover() {
     message: string;
     found: number;
     processed: number;
-    results: any[];
+    results: Record<string, unknown>[];
   }>({
     active: false,
     message: "",
@@ -116,9 +112,12 @@ function Discover() {
 
       refetchStats();
       refetchBiz();
-    } catch (error: any) {
+    } catch (error: Record<string, unknown>) {
       toast.error("Scan failed", {
-        description: error.response?.data?.detail || error.message || "An unexpected error occurred during the scan.",
+        description:
+          error.response?.data?.detail ||
+          error.message ||
+          "An unexpected error occurred during the scan.",
       });
     } finally {
       setScanState((prev) => ({ ...prev, active: false }));
@@ -135,7 +134,8 @@ function Discover() {
       }))
     : [];
 
-  const displayBusinesses = scanState.results.length > 0 ? scanState.results : (businessesData?.results || []);
+  const displayBusinesses =
+    scanState.results.length > 0 ? scanState.results : businessesData?.results || [];
 
   return (
     <AppShell
@@ -296,7 +296,7 @@ function Discover() {
               />
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                 {displayBusinesses.length > 0 ? (
-                  displayBusinesses.map((b: any) => (
+                  displayBusinesses.map((b: Record<string, unknown>) => (
                     <article
                       key={b.id}
                       className="panel p-4 transition-colors hover:border-border-strong flex flex-col"

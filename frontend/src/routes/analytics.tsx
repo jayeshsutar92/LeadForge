@@ -55,10 +55,10 @@ function Analytics() {
 
   const wonRevenue = useMemo(() => {
     if (!leadsData?.results || !businessesData?.results) return 0;
-    const wonLeads = leadsData.results.filter(l => l.status === "won");
+    const wonLeads = leadsData.results.filter((l) => l.status === "won");
     let total = 0;
     for (const lead of wonLeads) {
-      const biz = businessesData.results.find(b => b.id === lead.business_id);
+      const biz = businessesData.results.find((b) => b.id === lead.business_id);
       if (biz) {
         total += (biz.opportunity_score || 70) * 120;
       }

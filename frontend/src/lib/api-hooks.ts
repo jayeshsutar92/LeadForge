@@ -42,7 +42,7 @@ export interface LeadListResponse {
 }
 
 // --- Hooks ---
-export const useBusinesses = (params?: any) => {
+export const useBusinesses = (params?: Record<string, unknown>) => {
   return useQuery({
     queryKey: ["businesses", params],
     queryFn: async () => {
@@ -76,7 +76,7 @@ export const useDiscoverBusinesses = () => {
   });
 };
 
-export const useLeads = (params?: any) => {
+export const useLeads = (params?: Record<string, unknown>) => {
   return useQuery({
     queryKey: ["leads", params],
     queryFn: async () => {
@@ -89,7 +89,7 @@ export const useLeads = (params?: any) => {
 export const useCreateBusiness = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: Record<string, unknown>) => {
       const res = await apiClient.post("/businesses", data);
       return res.data;
     },
@@ -102,7 +102,7 @@ export const useCreateBusiness = () => {
 export const useCreateLead = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: Record<string, unknown>) => {
       const res = await apiClient.post("/crm/leads", data);
       return res.data;
     },
@@ -115,7 +115,7 @@ export const useCreateLead = () => {
 export const useUpdateLead = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+    mutationFn: async ({ id, data }: { id: string; data: Record<string, unknown> }) => {
       const res = await apiClient.put(`/crm/leads/${id}`, data);
       return res.data;
     },

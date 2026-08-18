@@ -45,7 +45,7 @@ function LoginPage() {
       await login(data);
       toast.success("Successfully logged in");
       // Note: redirect is handled by __root.tsx AuthWrapper automatically on state change
-    } catch (err: any) {
+    } catch (err: unknown) {
       const errorMsg = err.response?.data?.detail || "Invalid email or password";
       setError(errorMsg);
       toast.error("Login failed", { description: errorMsg });
