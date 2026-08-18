@@ -25,7 +25,14 @@ class OpportunityService:
     def _cache_key(self, bi_id: str) -> str:
         return build_redis_key("opportunity", bi_id)
 
-    async def get_latest(self, bi_id: UUID) -> Opportunity | None:
+    async def get_latest(self, bi_id: UUID, user_id: UUID | None = None) -> Opportunity | None:
+        if user_id:
+            bi = await self.bi_repo.get_by_id(bi_id)
+            if bi:
+                business = await self.business_repo.get_by_id(bi.business_id, user_id=user_id)
+                if not business:
+                    raise HTTPException(status_code=403, detail="Not authorized to access this opportunity")
+
         key = self._cache_key(str(bi_id))
         cached = await self.redis.get(key)
         

@@ -81,7 +81,10 @@ async def discover_businesses(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
 ):
-    query_str = quote_plus(f"{payload.query} {payload.region}")
+    # Normalize query and region
+    query_normalized = payload.query.strip().lower()
+    region_normalized = payload.region.strip().lower()
+    query_str = quote_plus(f"{query_normalized} {region_normalized}")
     url = f"https://nominatim.openstreetmap.org/search?q={query_str}&format=json&extratags=1&addressdetails=1&limit=10"
     
     try:
@@ -108,7 +111,8 @@ async def discover_businesses(
     for place in valid_results:
         try:
             name = place["name"]
-            raw_slug = f"{name.lower().replace(' ', '-').replace('/', '-')}-{place.get('place_id')}"
+            city_slug = region_normalized.replace(' ', '-')
+            raw_slug = f"{name.lower().replace(' ', '-').replace('/', '-')}-{city_slug}-{place.get('place_id')}"
             slug = re.sub(r'[^a-z0-9\-]', '', raw_slug)
             
             existing = await biz_service.business_repo.get_by_slug(slug, user.id)
@@ -126,7 +130,7 @@ async def discover_businesses(
             biz_create = BusinessCreate(
                 name=name,
                 slug=slug,
-                category=payload.query.lower(),
+                category=query_normalized,
                 city=city,
                 country=country,
                 website=website,
@@ -278,7 +282,7 @@ async def get_latest_intelligence(
         raise HTTPException(status_code=404, detail="Business not found")
         
     service = BusinessIntelligenceService(session)
-    result = await service.get_latest(b.id)
+    result = await service.get_latest(b.id, user_id=user.id)
     if not result:
         raise HTTPException(status_code=404, detail="No intelligence data found")
         

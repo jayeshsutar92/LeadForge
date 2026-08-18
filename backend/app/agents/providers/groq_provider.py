@@ -18,7 +18,7 @@ class GroqProvider(LLMProvider):
         if not api_key:
             raise ValueError("Groq API key is missing from configuration.")
         
-        self.model = self.config.get("ai_model", "gpt-oss-120b")
+        self.model = self.config.get("ai_model", "openai/gpt-oss-120b")
         self.temperature = self.config.get("ai_temperature", 0.2)
         self.max_tokens = self.config.get("ai_max_output_tokens", 4096)
         

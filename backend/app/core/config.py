@@ -80,7 +80,7 @@ class Settings(BaseSettings):
     gemini_api_key: str = Field(default="", validation_alias="GEMINI_API_KEY")
     groq_api_key: str = Field(default="", validation_alias="GROQ_API_KEY")
     ai_provider: str = Field(default="groq", validation_alias="AI_PROVIDER")
-    ai_model: str = Field(default="gpt-oss-120b", validation_alias="AI_MODEL")
+    ai_model: str = Field(default="openai/gpt-oss-120b", validation_alias="AI_MODEL")
     ai_timeout_seconds: float = Field(default=30.0, validation_alias="AI_TIMEOUT_SECONDS")
     ai_max_retries: int = Field(default=2, validation_alias="AI_MAX_RETRIES")
     ai_temperature: float = Field(default=0.2, validation_alias="AI_TEMPERATURE")

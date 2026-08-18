@@ -28,7 +28,12 @@ class BusinessIntelligenceService:
     def _cache_key(self, business_id: str) -> str:
         return build_redis_key("business_intelligence", business_id)
 
-    async def get_latest(self, business_id: UUID) -> BusinessIntelligence | None:
+    async def get_latest(self, business_id: UUID, user_id: UUID | None = None) -> BusinessIntelligence | None:
+        if user_id:
+            business = await self.business_repo.get_by_id(business_id, user_id=user_id)
+            if not business:
+                raise HTTPException(status_code=403, detail="Not authorized to access this intelligence report")
+
         key = self._cache_key(str(business_id))
         cached = await self.redis.get(key)
         

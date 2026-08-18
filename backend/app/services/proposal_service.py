@@ -61,7 +61,10 @@ class ProposalService:
     def _cache_key(self, opportunity_id: str) -> str:
         return build_redis_key("proposal", opportunity_id)
 
-    async def get_latest(self, opportunity_id: UUID) -> Proposal | None:
+    async def get_latest(self, opportunity_id: UUID, user_id: UUID | None = None) -> Proposal | None:
+        if user_id:
+            await self._verify_opp_ownership(opportunity_id, user_id)
+
         key = self._cache_key(str(opportunity_id))
         cached = await self.redis.get(key)
         
