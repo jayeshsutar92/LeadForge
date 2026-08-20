@@ -138,7 +138,8 @@ function Analytics() {
             {statsData?.by_category ? (
               <ul className="space-y-4">
                 {Object.entries(statsData.by_category).map(([name, count]) => {
-                  const share = Math.round((count / (statsData.total_businesses || 1)) * 100);
+                  const numCount = Number(count);
+                  const share = Math.round((numCount / (statsData.total_businesses || 1)) * 100);
                   return (
                     <li key={name} className="flex items-center gap-3">
                       <span className="min-w-0 flex-1 truncate text-sm">{name}</span>

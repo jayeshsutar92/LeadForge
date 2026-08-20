@@ -277,7 +277,7 @@ export function useSocialIntelligence(businessId: string | undefined) {
   return useQuery<SocialIntelligenceData, Error>({
     queryKey: ['socialIntelligence', businessId],
     queryFn: async () => {
-      const res = await api.get(\/social-intelligence/\\);
+      const res = await apiClient.get(`/social-intelligence/${businessId}`);
       return res.data;
     },
     enabled: !!businessId,

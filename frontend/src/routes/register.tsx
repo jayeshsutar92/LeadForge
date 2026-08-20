@@ -47,7 +47,7 @@ function RegisterPage() {
       await registerUser({ full_name: data.name, email: data.email, password: data.password });
       toast.success("Account created successfully");
       // Redirect handled by AuthWrapper
-    } catch (err: unknown) {
+    } catch (err: any) {
       const errorMsg = err.response?.data?.detail || "An error occurred during registration";
       setError(errorMsg);
       toast.error("Registration failed", { description: errorMsg });

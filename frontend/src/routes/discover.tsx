@@ -11,7 +11,12 @@ import { SectionHeader, StatCard } from "@/components/leadforge-ui";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useBusinessStats, useBusinesses, useDiscoverBusinesses } from "@/lib/api-hooks";
+import { 
+  useBusinessStats, 
+  useBusinesses, 
+  useDiscoverBusinesses,
+  type BusinessCard
+} from "@/lib/api-hooks";
 
 export const Route = createFileRoute("/discover")({
   head: () => ({
@@ -114,7 +119,7 @@ function Discover() {
 
       refetchStats();
       refetchBiz();
-    } catch (error: Record<string, unknown>) {
+    } catch (error: any) {
       toast.error("Scan failed", {
         description:
           error.response?.data?.detail ||
@@ -345,16 +350,16 @@ function Discover() {
                 />
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                   {displayBusinesses.length > 0 ? (
-                    displayBusinesses.map((b: Record<string, unknown>) => (
+                    displayBusinesses.map((b: any) => (
                       <article
-                        key={b.id as string}
+                        key={b.id}
                         className="panel p-4 transition-colors hover:border-border-strong flex flex-col"
                       >
                         <div className="flex items-start justify-between">
                           <div className="min-w-0">
-                            <p className="truncate text-sm font-medium">{b.name as string}</p>
+                            <p className="truncate text-sm font-medium">{b.name}</p>
                             <p className="mt-0.5 text-xs text-muted-foreground truncate">
-                              {b.category as string} · {b.city as string}
+                              {b.category} · {b.city}
                             </p>
                           </div>
                           <span
@@ -366,14 +371,14 @@ function Discover() {
                         <div className="mt-4 flex items-end justify-between pt-3 border-t border-border">
                           <div>
                             <p className="text-numeric text-lg font-semibold">
-                              {b.opportunity_score as number}
+                              {b.opportunity_score}
                             </p>
                             <p className="text-[11px] text-muted-foreground">score</p>
                           </div>
                           <div className="text-right">
                             <p className="text-xs text-muted-foreground">
                               {b.created_at
-                                ? new Date(b.created_at as string).toLocaleDateString()
+                                ? new Date(b.created_at).toLocaleDateString()
                                 : "N/A"}
                             </p>
                           </div>

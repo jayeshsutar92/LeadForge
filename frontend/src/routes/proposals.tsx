@@ -23,6 +23,8 @@ import {
   useGenerateOpportunity,
   useProposal,
   useGenerateProposal,
+  type LeadResponse,
+  type BusinessCard,
 } from "@/lib/api-hooks";
 
 export const Route = createFileRoute("/proposals")({
@@ -117,7 +119,7 @@ function Proposals() {
         ) : (
           <section className="grid gap-3 md:grid-cols-2">
             {activeProposals.map(({ lead, biz }) => (
-              <ProposalCard key={lead.id} lead={lead} biz={biz} />
+              <ProposalCard key={lead.id} lead={lead} biz={biz as BusinessCard | undefined} />
             ))}
           </section>
         )}
@@ -130,8 +132,8 @@ function ProposalCard({
   lead,
   biz,
 }: {
-  lead: Record<string, unknown>;
-  biz: Record<string, unknown>;
+  lead: LeadResponse;
+  biz: BusinessCard | undefined;
 }) {
   const { data: bi } = useIntelligence(biz?.slug || null);
   const { data: opp } = useOpportunity(biz?.slug || null, bi?.id || null);
@@ -157,7 +159,7 @@ function ProposalCard({
         await generateProp.mutateAsync({ slug: biz.slug, opportunityId: currentOppId });
         toast.success("Proposal generated successfully");
       }
-    } catch (err: unknown) {
+    } catch (err: any) {
       toast.error(
         err.response?.data?.detail?.message ||
           err.response?.data?.error?.message ||
@@ -166,7 +168,7 @@ function ProposalCard({
     }
   };
 
-  const estimatedValue = (biz.opportunity_score || 70) * 120;
+  const estimatedValue = (biz?.opportunity_score || 70) * 120;
 
   return (
     <article className="panel flex flex-col p-5 transition-colors hover:border-border-strong">
@@ -175,7 +177,7 @@ function ProposalCard({
           <p className="truncate text-xs text-muted-foreground">
             Lead ID: {lead.id.substring(0, 8)}
           </p>
-          <h2 className="mt-0.5 truncate text-base font-semibold">{biz.name}</h2>
+          <p className="text-sm font-medium truncate">{biz?.name || "Unknown"}</p>
         </div>
         <span
           className={cn(
@@ -227,13 +229,13 @@ function ProposalCard({
 
                     {proposal.content.sections &&
                       Array.isArray(proposal.content.sections) &&
-                      proposal.content.sections.map((sec: Record<string, unknown>, idx: number) => (
+                      proposal.content.sections.map((sec: any, idx: number) => (
                         <div key={idx}>
                           <div className="font-semibold text-base mb-1">
-                            {sec.heading || sec.title || `Section ${idx + 1}`}
+                            {(sec.heading as string) || (sec.title as string) || `Section ${idx + 1}`}
                           </div>
                           <div className="whitespace-pre-wrap text-muted-foreground">
-                            {sec.content || sec.body}
+                            {(sec.content as string) || (sec.body as string)}
                           </div>
                         </div>
                       ))}

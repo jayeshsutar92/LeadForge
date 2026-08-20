@@ -13,6 +13,8 @@ import {
   useGenerateOpportunity,
   useGenerateOutreach,
   useUpdateLead,
+  type LeadResponse,
+  type BusinessCard,
 } from "@/lib/api-hooks";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -117,7 +119,7 @@ function Outreach() {
           ) : (
             <ul className="mt-4 space-y-3">
               {contactedLeads.map(({ lead, biz }) => (
-                <OutreachCard key={lead.id} lead={lead} biz={biz} />
+                <OutreachCard key={lead.id} lead={lead} biz={biz as BusinessCard | undefined} />
               ))}
             </ul>
           )}
@@ -131,8 +133,8 @@ function OutreachCard({
   lead,
   biz,
 }: {
-  lead: Record<string, unknown>;
-  biz: Record<string, unknown>;
+  lead: LeadResponse;
+  biz: BusinessCard | undefined;
 }) {
   const { data: bi } = useIntelligence(biz?.slug || null);
   const { data: opp } = useOpportunity(biz?.slug || null, bi?.id || null);
@@ -168,7 +170,7 @@ function OutreachCard({
           await updateLead.mutateAsync({ id: lead.id, data: { status: "contacted" } });
         }
       }
-    } catch (err: unknown) {
+    } catch (err: any) {
       toast.error(
         err.response?.data?.detail?.message ||
           err.response?.data?.error?.message ||
@@ -181,7 +183,7 @@ function OutreachCard({
     <li className="rounded-lg border border-border bg-surface-raised p-4 transition-colors hover:border-border-strong">
       <div className="flex items-center justify-between">
         <div className="min-w-0">
-          <p className="text-sm font-medium truncate">{biz.name}</p>
+          <p className="text-sm font-medium truncate">{biz?.name || "Unknown"}</p>
           <p className="mt-1 text-xs text-muted-foreground">
             Status: <span className="uppercase text-primary">{lead.status}</span>
           </p>

@@ -135,7 +135,7 @@ function Overview() {
               </div>
             ) : (
               <ul className="divide-y divide-border">
-                {top.map((lead: Record<string, unknown>) => (
+                {top.map((lead: any) => (
                   <li
                     key={lead.id}
                     className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-5 py-3"
@@ -217,7 +217,7 @@ function Overview() {
                 {recentLeads.map((lead) => {
                   const bName =
                     businessesData?.results?.find(
-                      (b: Record<string, unknown>) => b.id === lead.business_id,
+                      (b: any) => b.id === lead.business_id,
                     )?.name || "Lead";
                   return (
                     <li key={lead.id} className="flex gap-3">
