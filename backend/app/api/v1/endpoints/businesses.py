@@ -4,6 +4,7 @@ import logging
 import re
 import httpx
 import asyncio
+from fastapi import BackgroundTasks
 from pydantic import BaseModel, Field
 from urllib.parse import quote_plus
 from typing import Optional
@@ -79,6 +80,7 @@ async def list_businesses(
 @router.post("/discover", response_model=DiscoverResponse)
 async def discover_businesses(
     payload: DiscoverRequest,
+    background_tasks: BackgroundTasks,
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
 ):
@@ -147,12 +149,27 @@ async def discover_businesses(
                 notes=f"Discovered scanning for {payload.query} in {payload.region}"
             )
             await crm_service.create_lead(lead_create, current_user_id=user.id)
-            
+            # Regular BI analysis
             try:
                 await bi_service.trigger_analysis(biz.slug, user.id)
                 await asyncio.sleep(1.5) # Prevent rate-limiting on burst discovery
             except Exception as e:
                 logger.error(f"Failed to trigger analysis for {biz.slug}: {e}")
+                
+            # Trigger Social Intelligence if website is missing
+            if not biz.website:
+                from app.db.session import AsyncSessionLocal
+                from app.services.social_intelligence_service import SocialIntelligenceService
+                
+                async def run_social_intelligence(slug: str, uid: UUID):
+                    async with AsyncSessionLocal() as bg_session:
+                        si_service = SocialIntelligenceService(bg_session)
+                        try:
+                            await si_service.trigger_analysis(slug, uid)
+                        except Exception as e:
+                            logger.error(f"Social intelligence task failed: {e}")
+                            
+                background_tasks.add_task(run_social_intelligence, biz.slug, user.id)
             
             new_leads += 1
             

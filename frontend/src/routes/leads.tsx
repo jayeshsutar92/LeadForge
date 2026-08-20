@@ -12,6 +12,9 @@ import {
   Star,
   X,
   Loader2,
+  Copy,
+  Check,
+  Radar,
 } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
@@ -27,6 +30,7 @@ import {
   useLeadDetail,
   useBusinessDetail,
   useUpdateLead,
+  useSocialIntelligence,
 } from "@/lib/api-hooks";
 import {
   Select,
@@ -76,6 +80,11 @@ function LeadsPage() {
   const { data: selectedBizDetail, isLoading: bizDetailLoading } = useBusinessDetail(
     businessesData?.results.find((b) => b.id === selectedLeadDetail?.business_id)?.slug || null,
   );
+  
+  const selectedBiz = businessesData?.results.find((b) => b.id === selectedLeadDetail?.business_id) || null;
+  const { data: socialIntel, isLoading: socialIntelLoading } = useSocialIntelligence(
+    !selectedBiz?.website ? selectedBiz?.id : undefined
+  );
 
   const rows = useMemo(() => {
     if (!leadsData?.results || !businessesData?.results) return [];
@@ -105,8 +114,6 @@ function LeadsPage() {
       });
   }, [leadsData, businessesData, filter, query]);
 
-  const selectedBiz =
-    businessesData?.results.find((b) => b.id === selectedLeadDetail?.business_id) || null;
 
   if (leadsError) {
     return (
@@ -351,6 +358,60 @@ function LeadsPage() {
                     />
                   </dl>
 
+                  {!selectedBiz?.website && (
+                    <div className="mt-4 border-t border-border pt-4">
+                      <p className="flex items-center gap-1.5 text-xs font-semibold">
+                        <Radar className="size-3.5 text-primary" /> Social Intelligence
+                      </p>
+                      
+                      {socialIntelLoading ? (
+                        <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                          <Loader2 className="size-3 animate-spin" /> Scanning social presence...
+                        </div>
+                      ) : socialIntel?.data ? (
+                        <div className="mt-3 space-y-3">
+                          {socialIntel.data.profiles?.length > 0 ? (
+                            <div className="space-y-2">
+                              {socialIntel.data.profiles.map((p, i) => (
+                                <div key={i} className="flex flex-col gap-1 rounded bg-secondary/30 p-2 text-xs">
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-medium capitalize">{p.platform}</span>
+                                    <span className={p.confidence > 80 ? "text-success" : "text-warning"}>
+                                      {p.confidence}% match
+                                    </span>
+                                  </div>
+                                  <a href={p.url} target="_blank" rel="noreferrer" className="text-muted-foreground hover:underline truncate">
+                                    @{p.username}
+                                  </a>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-muted-foreground italic">No public profiles found.</p>
+                          )}
+                          
+                          {socialIntel.data.recommended_platform && (
+                            <div className="rounded border border-primary/20 bg-primary/5 p-2">
+                              <p className="text-[10px] uppercase text-muted-foreground font-semibold">Recommended Channel</p>
+                              <p className="text-xs font-medium capitalize mt-0.5">{socialIntel.data.recommended_platform}</p>
+                            </div>
+                          )}
+                          
+                          {socialIntel.data.messages && Object.entries(socialIntel.data.messages).length > 0 && (
+                            <div className="space-y-2">
+                              <p className="text-[10px] uppercase text-muted-foreground font-semibold">Generated Outreach</p>
+                              {Object.entries(socialIntel.data.messages).map(([platform, msg], i) => (
+                                <MessageCopyCard key={i} platform={platform} message={msg as string} />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="mt-2 text-xs text-muted-foreground">Waiting for analysis...</p>
+                      )}
+                    </div>
+                  )}
+
                   <div className="flex gap-2">
                     <Button className="flex-1" onClick={() => navigate({ to: "/proposals" })}>
                       <Sparkles className="size-4" />
@@ -391,6 +452,34 @@ function Row({ icon, label, value }: { icon: React.ReactNode; label: string; val
         {label}
       </dt>
       <dd className="min-w-0 truncate font-medium">{value}</dd>
+    </div>
+  );
+}
+
+function MessageCopyCard({ platform, message }: { platform: string; message: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(message);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="relative group rounded bg-card border border-border p-3">
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-[10px] font-bold capitalize text-primary">{platform}</span>
+        <button
+          onClick={handleCopy}
+          className="text-muted-foreground hover:text-foreground transition-colors"
+          title="Copy message"
+        >
+          {copied ? <Check className="size-3 text-success" /> : <Copy className="size-3" />}
+        </button>
+      </div>
+      <p className="text-[11px] leading-relaxed text-muted-foreground line-clamp-4 group-hover:line-clamp-none transition-all">
+        {message}
+      </p>
     </div>
   );
 }

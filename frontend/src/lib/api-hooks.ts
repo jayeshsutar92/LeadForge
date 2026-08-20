@@ -256,3 +256,30 @@ export const useGenerateOutreach = () => {
     },
   });
 };
+export interface SocialProfile {
+  platform: string;
+  url: string;
+  username: string;
+  confidence: number;
+  reasoning: string;
+}
+
+export interface SocialIntelligenceData {
+  data: {
+    profiles: SocialProfile[];
+    recommended_platform: string | null;
+    messages: Record<string, string>;
+  } | null;
+  created_at?: string;
+}
+
+export function useSocialIntelligence(businessId: string | undefined) {
+  return useQuery<SocialIntelligenceData, Error>({
+    queryKey: ['socialIntelligence', businessId],
+    queryFn: async () => {
+      const res = await api.get(\/social-intelligence/\\);
+      return res.data;
+    },
+    enabled: !!businessId,
+  });
+}
