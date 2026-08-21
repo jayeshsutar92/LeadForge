@@ -84,7 +84,13 @@ async def logout(
     response: Response,
     user: User = Depends(get_current_user)
 ):
-    response.delete_cookie("access_token", path="/")
+    response.delete_cookie(
+        key="access_token",
+        path="/",
+        secure=True,
+        httponly=True,
+        samesite="none"
+    )
     return {"ok": True}
 
 @router.get("/me", response_model=UserResponse)

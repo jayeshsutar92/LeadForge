@@ -79,25 +79,36 @@ class AuthService:
             expires_delta=timedelta(minutes=ACCESS_TTL_MIN),
         )
     async def check_brute_force(self, identifier: str) -> None:
-        redis = get_redis_client()
-        key = build_redis_key("auth", "brute_force", identifier)
-        count = await redis.get(key)
-        if count and int(count) >= LOCKOUT_MAX_ATTEMPTS:
-            raise HTTPException(status_code=429, detail="Too many login attempts. Try again later.")
+        try:
+            redis = get_redis_client()
+            key = build_redis_key("auth", "brute_force", identifier)
+            count = await redis.get(key)
+            if count and int(count) >= LOCKOUT_MAX_ATTEMPTS:
+                raise HTTPException(status_code=429, detail="Too many login attempts. Try again later.")
+        except HTTPException:
+            raise
+        except Exception:
+            pass
 
     async def register_failed_attempt(self, identifier: str) -> None:
-        redis = get_redis_client()
-        key = build_redis_key("auth", "brute_force", identifier)
-        count = await redis.incr(key)
-        if count == 1:
-            await redis.expire(key, LOCKOUT_MINUTES * 60)
-        elif count >= LOCKOUT_MAX_ATTEMPTS:
-            await redis.expire(key, LOCKOUT_MINUTES * 60)
+        try:
+            redis = get_redis_client()
+            key = build_redis_key("auth", "brute_force", identifier)
+            count = await redis.incr(key)
+            if count == 1:
+                await redis.expire(key, LOCKOUT_MINUTES * 60)
+            elif count >= LOCKOUT_MAX_ATTEMPTS:
+                await redis.expire(key, LOCKOUT_MINUTES * 60)
+        except Exception:
+            pass
 
     async def clear_failed_attempts(self, identifier: str) -> None:
-        redis = get_redis_client()
-        key = build_redis_key("auth", "brute_force", identifier)
-        await redis.delete(key)
+        try:
+            redis = get_redis_client()
+            key = build_redis_key("auth", "brute_force", identifier)
+            await redis.delete(key)
+        except Exception:
+            pass
 
     def decode_expected_token(self, token: str, token_type: TokenType) -> dict:
         try:
