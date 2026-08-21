@@ -80,10 +80,11 @@ function LeadsPage() {
   const { data: selectedBizDetail, isLoading: bizDetailLoading } = useBusinessDetail(
     businessesData?.results.find((b) => b.id === selectedLeadDetail?.business_id)?.slug || null,
   );
-  
-  const selectedBiz = businessesData?.results.find((b) => b.id === selectedLeadDetail?.business_id) || null;
+
+  const selectedBiz =
+    businessesData?.results.find((b) => b.id === selectedLeadDetail?.business_id) || null;
   const { data: socialIntel, isLoading: socialIntelLoading } = useSocialIntelligence(
-    !selectedBiz?.website ? selectedBiz?.id : undefined
+    !selectedBiz?.website ? selectedBiz?.id : undefined,
   );
 
   const rows = useMemo(() => {
@@ -113,7 +114,6 @@ function LeadsPage() {
         return matchesFilter && matchesQuery;
       });
   }, [leadsData, businessesData, filter, query]);
-
 
   if (leadsError) {
     return (
@@ -363,7 +363,7 @@ function LeadsPage() {
                       <p className="flex items-center gap-1.5 text-xs font-semibold">
                         <Radar className="size-3.5 text-primary" /> Social Intelligence
                       </p>
-                      
+
                       {socialIntelLoading ? (
                         <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
                           <Loader2 className="size-3 animate-spin" /> Scanning social presence...
@@ -373,41 +373,70 @@ function LeadsPage() {
                           {socialIntel.data.profiles?.length > 0 ? (
                             <div className="space-y-2">
                               {socialIntel.data.profiles.map((p, i) => (
-                                <div key={i} className="flex flex-col gap-1 rounded bg-secondary/30 p-2 text-xs">
+                                <div
+                                  key={i}
+                                  className="flex flex-col gap-1 rounded bg-secondary/30 p-2 text-xs"
+                                >
                                   <div className="flex items-center justify-between">
                                     <span className="font-medium capitalize">{p.platform}</span>
-                                    <span className={p.confidence > 80 ? "text-success" : "text-warning"}>
+                                    <span
+                                      className={
+                                        p.confidence > 80 ? "text-success" : "text-warning"
+                                      }
+                                    >
                                       {p.confidence}% match
                                     </span>
                                   </div>
-                                  <a href={p.url} target="_blank" rel="noreferrer" className="text-muted-foreground hover:underline truncate">
+                                  <a
+                                    href={p.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-muted-foreground hover:underline truncate"
+                                  >
                                     @{p.username}
                                   </a>
                                 </div>
                               ))}
                             </div>
                           ) : (
-                            <p className="text-xs text-muted-foreground italic">No public profiles found.</p>
+                            <p className="text-xs text-muted-foreground italic">
+                              No public profiles found.
+                            </p>
                           )}
-                          
+
                           {socialIntel.data.recommended_platform && (
                             <div className="rounded border border-primary/20 bg-primary/5 p-2">
-                              <p className="text-[10px] uppercase text-muted-foreground font-semibold">Recommended Channel</p>
-                              <p className="text-xs font-medium capitalize mt-0.5">{socialIntel.data.recommended_platform}</p>
+                              <p className="text-[10px] uppercase text-muted-foreground font-semibold">
+                                Recommended Channel
+                              </p>
+                              <p className="text-xs font-medium capitalize mt-0.5">
+                                {socialIntel.data.recommended_platform}
+                              </p>
                             </div>
                           )}
-                          
-                          {socialIntel.data.messages && Object.entries(socialIntel.data.messages).length > 0 && (
-                            <div className="space-y-2">
-                              <p className="text-[10px] uppercase text-muted-foreground font-semibold">Generated Outreach</p>
-                              {Object.entries(socialIntel.data.messages).map(([platform, msg], i) => (
-                                <MessageCopyCard key={i} platform={platform} message={msg as string} />
-                              ))}
-                            </div>
-                          )}
+
+                          {socialIntel.data.messages &&
+                            Object.entries(socialIntel.data.messages).length > 0 && (
+                              <div className="space-y-2">
+                                <p className="text-[10px] uppercase text-muted-foreground font-semibold">
+                                  Generated Outreach
+                                </p>
+                                {Object.entries(socialIntel.data.messages).map(
+                                  ([platform, msg], i) => (
+                                    <MessageCopyCard
+                                      key={i}
+                                      platform={platform}
+                                      message={msg as string}
+                                    />
+                                  ),
+                                )}
+                              </div>
+                            )}
                         </div>
                       ) : (
-                        <p className="mt-2 text-xs text-muted-foreground">Waiting for analysis...</p>
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          Waiting for analysis...
+                        </p>
                       )}
                     </div>
                   )}

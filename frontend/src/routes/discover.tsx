@@ -11,12 +11,13 @@ import { SectionHeader, StatCard } from "@/components/leadforge-ui";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { 
-  useBusinessStats, 
-  useBusinesses, 
+import {
+  useBusinessStats,
+  useBusinesses,
   useDiscoverBusinesses,
-  type BusinessCard
+  type BusinessCard,
 } from "@/lib/api-hooks";
+import type { ApiError } from "@/lib/api";
 
 export const Route = createFileRoute("/discover")({
   head: () => ({
@@ -119,7 +120,8 @@ function Discover() {
 
       refetchStats();
       refetchBiz();
-    } catch (error: any) {
+    } catch (err: unknown) {
+      const error = err as ApiError;
       toast.error("Scan failed", {
         description:
           error.response?.data?.detail ||
@@ -350,7 +352,7 @@ function Discover() {
                 />
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                   {displayBusinesses.length > 0 ? (
-                    displayBusinesses.map((b: any) => (
+                    displayBusinesses.map((b: BusinessCard) => (
                       <article
                         key={b.id}
                         className="panel p-4 transition-colors hover:border-border-strong flex flex-col"
@@ -377,9 +379,7 @@ function Discover() {
                           </div>
                           <div className="text-right">
                             <p className="text-xs text-muted-foreground">
-                              {b.created_at
-                                ? new Date(b.created_at).toLocaleDateString()
-                                : "N/A"}
+                              {b.created_at ? new Date(b.created_at).toLocaleDateString() : "N/A"}
                             </p>
                           </div>
                         </div>

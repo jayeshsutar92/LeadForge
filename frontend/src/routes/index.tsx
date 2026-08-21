@@ -12,7 +12,13 @@ import {
 } from "@/components/leadforge-ui";
 import { Button } from "@/components/ui/button";
 import { formatCurrency, type LeadStatus } from "@/lib/ui-utils";
-import { useBusinessStats, useLeads, useBusinesses } from "@/lib/api-hooks";
+import {
+  useBusinessStats,
+  useLeads,
+  useBusinesses,
+  type LeadResponse,
+  type BusinessCard,
+} from "@/lib/api-hooks";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -135,7 +141,7 @@ function Overview() {
               </div>
             ) : (
               <ul className="divide-y divide-border">
-                {top.map((lead: any) => (
+                {top.map((lead: LeadResponse) => (
                   <li
                     key={lead.id}
                     className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-5 py-3"
@@ -216,9 +222,8 @@ function Overview() {
               <ul className="space-y-4 mt-2">
                 {recentLeads.map((lead) => {
                   const bName =
-                    businessesData?.results?.find(
-                      (b: any) => b.id === lead.business_id,
-                    )?.name || "Lead";
+                    businessesData?.results?.find((b: BusinessCard) => b.id === lead.business_id)
+                      ?.name || "Lead";
                   return (
                     <li key={lead.id} className="flex gap-3">
                       <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-primary-soft text-primary">

@@ -30,3 +30,13 @@ apiClient.interceptors.response.use(
     return Promise.reject(error);
   },
 );
+
+export interface ApiError {
+  response?: {
+    data?: {
+      detail?: string | { message?: string };
+      error?: { message?: string };
+    };
+  };
+  message?: string;
+}

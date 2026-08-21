@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Sparkles } from "lucide-react";
 import { useForm } from "react-hook-form";
+import type { ApiError } from "@/lib/api";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -45,8 +46,9 @@ function LoginPage() {
       await login(data);
       toast.success("Successfully logged in");
       // Note: redirect is handled by __root.tsx AuthWrapper automatically on state change
-    } catch (err: any) {
-      const errorMsg = err.response?.data?.detail || "Invalid email or password";
+    } catch (err: unknown) {
+      const error = err as ApiError;
+      const errorMsg = error.response?.data?.detail || "Invalid email or password";
       setError(errorMsg);
       toast.error("Login failed", { description: errorMsg });
     }

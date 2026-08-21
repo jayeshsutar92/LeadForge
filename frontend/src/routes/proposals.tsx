@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { FileText, Sparkles, Loader2 } from "lucide-react";
 import { useMemo } from "react";
 import { toast } from "sonner";
+import type { ApiError } from "@/lib/api";
 
 import { AppShell } from "@/components/app-shell";
 import { StatCard } from "@/components/leadforge-ui";
@@ -128,13 +129,7 @@ function Proposals() {
   );
 }
 
-function ProposalCard({
-  lead,
-  biz,
-}: {
-  lead: LeadResponse;
-  biz: BusinessCard | undefined;
-}) {
+function ProposalCard({ lead, biz }: { lead: LeadResponse; biz: BusinessCard | undefined }) {
   const { data: bi } = useIntelligence(biz?.slug || null);
   const { data: opp } = useOpportunity(biz?.slug || null, bi?.id || null);
   const { data: proposal, isLoading: proposalLoading } = useProposal(
@@ -159,10 +154,11 @@ function ProposalCard({
         await generateProp.mutateAsync({ slug: biz.slug, opportunityId: currentOppId });
         toast.success("Proposal generated successfully");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const error = err as ApiError;
       toast.error(
-        err.response?.data?.detail?.message ||
-          err.response?.data?.error?.message ||
+        error.response?.data?.detail?.message ||
+          error.response?.data?.error?.message ||
           "Failed to generate proposal. Please try again.",
       );
     }
@@ -229,16 +225,28 @@ function ProposalCard({
 
                     {proposal.content.sections &&
                       Array.isArray(proposal.content.sections) &&
-                      proposal.content.sections.map((sec: any, idx: number) => (
-                        <div key={idx}>
-                          <div className="font-semibold text-base mb-1">
-                            {(sec.heading as string) || (sec.title as string) || `Section ${idx + 1}`}
+                      proposal.content.sections.map(
+                        (
+                          sec: {
+                            heading?: string;
+                            title?: string;
+                            content?: string;
+                            body?: string;
+                          },
+                          idx: number,
+                        ) => (
+                          <div key={idx}>
+                            <div className="font-semibold text-base mb-1">
+                              {(sec.heading as string) ||
+                                (sec.title as string) ||
+                                `Section ${idx + 1}`}
+                            </div>
+                            <div className="whitespace-pre-wrap text-muted-foreground">
+                              {(sec.content as string) || (sec.body as string)}
+                            </div>
                           </div>
-                          <div className="whitespace-pre-wrap text-muted-foreground">
-                            {(sec.content as string) || (sec.body as string)}
-                          </div>
-                        </div>
-                      ))}
+                        ),
+                      )}
 
                     {proposal.content.pricing && (
                       <div>
