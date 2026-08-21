@@ -37,7 +37,8 @@ class SocialIntelligenceService:
                 business_name=business.name,
                 category=business.category,
                 city=business.city,
-                country=business.country
+                country=business.country,
+                address=business.bio
             )
         except Exception as e:
             logger.error(f"Error discovering social profiles for {business.name}: {e}")

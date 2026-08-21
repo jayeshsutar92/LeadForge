@@ -110,6 +110,7 @@ async def discover_businesses(
     
     new_leads = 0
     discovered_cards = []
+    social_intelligence_slugs = []
     
     for place in valid_results:
         try:
@@ -156,25 +157,32 @@ async def discover_businesses(
             except Exception as e:
                 logger.error(f"Failed to trigger analysis for {biz.slug}: {e}")
                 
-            # Trigger Social Intelligence if website is missing
+            # Collect slug for Social Intelligence if website is missing
             if not biz.website:
-                from app.db.session import AsyncSessionLocal
-                from app.services.social_intelligence_service import SocialIntelligenceService
-                
-                async def run_social_intelligence(slug: str, uid: UUID):
-                    async with AsyncSessionLocal() as bg_session:
-                        si_service = SocialIntelligenceService(bg_session)
-                        try:
-                            await si_service.trigger_analysis(slug, uid)
-                        except Exception as e:
-                            logger.error(f"Social intelligence task failed: {e}")
-                            
-                background_tasks.add_task(run_social_intelligence, biz.slug, user.id)
+                social_intelligence_slugs.append(biz.slug)
             
             new_leads += 1
             
         except Exception as e:
             logger.error(f"Failed to process discovered business {place.get('name')}: {e}")
+
+    # Trigger Social Intelligence sequentially in a single background task
+    if social_intelligence_slugs:
+        from app.db.session import AsyncSessionLocal
+        from app.services.social_intelligence_service import SocialIntelligenceService
+        
+        async def run_social_intelligence_batch(slugs: list[str], uid: UUID):
+            async with AsyncSessionLocal() as bg_session:
+                si_service = SocialIntelligenceService(bg_session)
+                for slug in slugs:
+                    try:
+                        await si_service.trigger_analysis(slug, uid)
+                        await asyncio.sleep(2.0)  # Graceful delay between businesses
+                    except Exception as e:
+                        logger.error(f"Social intelligence task failed for {slug}: {e}")
+                        
+        background_tasks.add_task(run_social_intelligence_batch, social_intelligence_slugs, user.id)
+            
             
     return DiscoverResponse(
         message=f"Found {len(valid_results)} businesses, processed {new_leads} new leads.",

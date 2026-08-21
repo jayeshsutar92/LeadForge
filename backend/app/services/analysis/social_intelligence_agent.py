@@ -7,7 +7,7 @@ from app.core.config import get_settings
 
 logger = logging.getLogger(__name__)
 
-async def discover_social_profiles(business_name: str, category: str, city: str, country: str) -> dict:
+async def discover_social_profiles(business_name: str, category: str, city: str, country: str, address: str = "") -> dict:
     """
     Search DuckDuckGo for public social profiles and use the LLM to filter and extract them.
     Returns a dictionary of profiles, scores, and recommended channel.
@@ -55,6 +55,7 @@ Business Context:
 - Name: {business_name}
 - Category: {category}
 - Location: {city}, {country}
+- Address/Bio Details: {address}
 
 Search Results:
 {json.dumps(search_results, indent=2)}
