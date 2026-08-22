@@ -17,7 +17,7 @@ import {
   useDiscoverBusinesses,
   type BusinessCard,
 } from "@/lib/api-hooks";
-import type { ApiError } from "@/lib/api";
+import { getErrorMessage } from "@/lib/api";
 
 export const Route = createFileRoute("/discover")({
   head: () => ({
@@ -121,12 +121,8 @@ function Discover() {
       refetchStats();
       refetchBiz();
     } catch (err: unknown) {
-      const error = err as ApiError;
       toast.error("Scan failed", {
-        description:
-          error.response?.data?.detail ||
-          error.message ||
-          "An unexpected error occurred during the scan.",
+        description: getErrorMessage(err) || "An unexpected error occurred during the scan.",
       });
     } finally {
       setScanState((prev) => ({ ...prev, active: false }));
@@ -352,7 +348,7 @@ function Discover() {
                 />
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                   {displayBusinesses.length > 0 ? (
-                    displayBusinesses.map((b: BusinessCard) => (
+                    (displayBusinesses as BusinessCard[]).map((b) => (
                       <article
                         key={b.id}
                         className="panel p-4 transition-colors hover:border-border-strong flex flex-col"

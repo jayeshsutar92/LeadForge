@@ -35,9 +35,32 @@ apiClient.interceptors.response.use(
 export interface ApiError {
   response?: {
     data?: {
-      detail?: string | { message?: string };
+      detail?:
+        string | { message?: string } | Array<{ msg?: string; type?: string; loc?: string[] }>;
       error?: { message?: string };
     };
   };
   message?: string;
+}
+
+export function getErrorMessage(err: unknown): string {
+  const error = err as ApiError;
+
+  if (error.response?.data) {
+    const data = error.response.data;
+    if (typeof data.detail === "string") {
+      return data.detail;
+    }
+    if (data.detail && !Array.isArray(data.detail) && data.detail.message) {
+      return data.detail.message;
+    }
+    if (Array.isArray(data.detail) && data.detail.length > 0 && data.detail[0]?.msg) {
+      return data.detail[0].msg;
+    }
+    if (data.error?.message) {
+      return data.error.message;
+    }
+  }
+
+  return error.message || "An unexpected error occurred.";
 }

@@ -17,7 +17,7 @@ import {
   type BusinessCard,
 } from "@/lib/api-hooks";
 import { useState } from "react";
-import type { ApiError } from "@/lib/api";
+import { getErrorMessage } from "@/lib/api";
 import { toast } from "sonner";
 import {
   Select,
@@ -166,12 +166,7 @@ function OutreachCard({ lead, biz }: { lead: LeadResponse; biz: BusinessCard | u
         }
       }
     } catch (err: unknown) {
-      const error = err as ApiError;
-      toast.error(
-        error.response?.data?.detail?.message ||
-          error.response?.data?.error?.message ||
-          "Failed to draft outreach. Please try again.",
-      );
+      toast.error(getErrorMessage(err) || "Failed to draft outreach. Please try again.");
     }
   };
 

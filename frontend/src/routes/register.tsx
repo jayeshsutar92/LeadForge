@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Sparkles } from "lucide-react";
 import { useForm } from "react-hook-form";
-import type { ApiError } from "@/lib/api";
+import { getErrorMessage } from "@/lib/api";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -49,8 +49,7 @@ function RegisterPage() {
       toast.success("Account created successfully");
       // Redirect handled by AuthWrapper
     } catch (err: unknown) {
-      const error = err as ApiError;
-      const errorMsg = error.response?.data?.detail || "An error occurred during registration";
+      const errorMsg = getErrorMessage(err) || "An error occurred during registration";
       setError(errorMsg);
       toast.error("Registration failed", { description: errorMsg });
     }

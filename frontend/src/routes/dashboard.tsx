@@ -141,25 +141,25 @@ function Overview() {
               </div>
             ) : (
               <ul className="divide-y divide-border">
-                {top.map((lead: LeadResponse) => (
+                {top.map((biz: BusinessCard) => (
                   <li
-                    key={lead.id}
+                    key={biz.id}
                     className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-5 py-3"
                   >
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{lead.name}</p>
+                      <p className="truncate text-sm font-medium">{biz.name}</p>
                       <p className="truncate text-xs text-muted-foreground">
-                        {lead.category} · {lead.city}, {lead.country}
+                        {biz.category} · {biz.city}, {biz.country}
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-3">
                       <span className="hidden sm:block">
-                        <WebsiteTag state={lead.website ? "modern" : "none"} />
+                        <WebsiteTag state={biz.website ? "modern" : "none"} />
                       </span>
                       <span className="hidden md:block">
                         <StatusPill status="new" />
                       </span>
-                      <ScoreBadge score={lead.opportunity_score} />
+                      <ScoreBadge score={biz.opportunity_score} />
                     </div>
                   </li>
                 ))}

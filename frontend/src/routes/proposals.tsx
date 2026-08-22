@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { FileText, Sparkles, Loader2 } from "lucide-react";
 import { useMemo } from "react";
 import { toast } from "sonner";
-import type { ApiError } from "@/lib/api";
+import { getErrorMessage } from "@/lib/api";
 
 import { AppShell } from "@/components/app-shell";
 import { StatCard } from "@/components/leadforge-ui";
@@ -155,12 +155,7 @@ function ProposalCard({ lead, biz }: { lead: LeadResponse; biz: BusinessCard | u
         toast.success("Proposal generated successfully");
       }
     } catch (err: unknown) {
-      const error = err as ApiError;
-      toast.error(
-        error.response?.data?.detail?.message ||
-          error.response?.data?.error?.message ||
-          "Failed to generate proposal. Please try again.",
-      );
+      toast.error(getErrorMessage(err) || "Failed to generate proposal. Please try again.");
     }
   };
 
