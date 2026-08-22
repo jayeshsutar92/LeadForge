@@ -21,7 +21,7 @@ import { ModeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 
 const nav = [
-  { to: "/", label: "Overview", icon: LayoutDashboard },
+  { to: "/dashboard", label: "Overview", icon: LayoutDashboard },
   { to: "/discover", label: "Discover", icon: Radar },
   { to: "/leads", label: "Leads", icon: Users },
   { to: "/outreach", label: "Outreach", icon: Send },
@@ -57,7 +57,7 @@ export function AppShell({
 
         <nav className="flex-1 space-y-0.5 px-3 py-2">
           {nav.map((item) => {
-            const active = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
+            const active = item.to === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(item.to);
             return (
               <Link
                 key={item.to}
@@ -108,7 +108,7 @@ export function AppShell({
           </div>
           <nav className="flex gap-1 overflow-x-auto px-3 pb-2 lg:hidden">
             {nav.map((item) => {
-              const active = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
+              const active = item.to === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(item.to);
               return (
                 <Link
                   key={item.to}
