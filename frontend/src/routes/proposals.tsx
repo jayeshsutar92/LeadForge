@@ -18,7 +18,6 @@ import { formatCurrency } from "@/lib/ui-utils";
 import { cn } from "@/lib/utils";
 import {
   useLeads,
-  useBusinesses,
   useIntelligence,
   useOpportunity,
   useGenerateOpportunity,
@@ -55,15 +54,13 @@ function Proposals() {
     isLoading: leadsLoading,
     isError: leadsError,
   } = useLeads({ limit: 100 });
-  const { data: businessesData, isLoading: bizLoading } = useBusinesses({ limit: 100 });
 
   const activeProposals = useMemo(() => {
-    if (!leadsData?.results || !businessesData?.results) return [];
+    if (!leadsData?.results) return [];
     return leadsData.results
       .filter((l) => ["new", "qualified", "contacted", "negotiating", "won"].includes(l.status))
       .map((lead) => {
-        const biz = businessesData.results.find((b) => b.id === lead.business_id);
-        return { lead, biz };
+        return { lead, biz: lead.business };
       })
       .filter((x) => x.biz)
       .sort((a, b) => {
@@ -71,7 +68,7 @@ function Proposals() {
         const tB = b.lead.updated_at ? new Date(b.lead.updated_at).getTime() : 0;
         return tB - tA;
       });
-  }, [leadsData, businessesData]);
+  }, [leadsData]);
 
   const activeCount = activeProposals.length;
   // Estimate value as opportunity score * 120 (same logic as in Leads)
@@ -109,7 +106,7 @@ function Proposals() {
           <div className="flex h-48 items-center justify-center text-sm text-destructive">
             Failed to load proposals data.
           </div>
-        ) : leadsLoading || bizLoading ? (
+        ) : leadsLoading ? (
           <div className="flex h-48 items-center justify-center">
             <Loader2 className="size-6 animate-spin text-muted-foreground" />
           </div>
