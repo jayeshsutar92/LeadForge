@@ -26,7 +26,6 @@ import { formatCurrency, statusMeta, type LeadStatus } from "@/lib/ui-utils";
 import { cn } from "@/lib/utils";
 import {
   useLeads,
-  useBusinesses,
   useLeadDetail,
   useBusinessDetail,
   useUpdateLead,
@@ -74,36 +73,44 @@ function LeadsPage() {
     isLoading: leadsLoading,
     isError: leadsError,
   } = useLeads({ limit: 100 });
-  const { data: businessesData, isLoading: bizLoading } = useBusinesses({ limit: 100 });
+
 
   const { data: selectedLeadDetail, isLoading: leadDetailLoading } = useLeadDetail(selectedLeadId);
   const { data: selectedBizDetail, isLoading: bizDetailLoading } = useBusinessDetail(
-    businessesData?.results.find((b) => b.id === selectedLeadDetail?.business_id)?.slug || null,
+    selectedLeadDetail?.business?.slug || null,
   );
 
-  const selectedBiz =
-    businessesData?.results.find((b) => b.id === selectedLeadDetail?.business_id) || null;
+  const selectedBiz = selectedLeadDetail?.business || null;
   const { data: socialIntel, isLoading: socialIntelLoading } = useSocialIntelligence(
     !selectedBiz?.website ? selectedBiz?.id : undefined,
   );
 
   const rows = useMemo(() => {
-    if (!leadsData?.results || !businessesData?.results) return [];
+    if (!leadsData?.results) return [];
 
     return leadsData.results
-      .map((lead) => {
-        const biz = businessesData.results.find((b) => b.id === lead.business_id);
-        return {
-          ...lead,
-          business: biz || {
-            name: "Unknown",
-            category: "Unknown",
-            city: "Unknown",
-            website: "",
-            opportunity_score: 0,
-          },
-        };
-      })
+      .map((lead) => ({
+        ...lead,
+        business: lead.business || {
+          id: lead.business_id,
+          slug: "",
+          name: "Unknown Business",
+          category: "N/A",
+          city: "N/A",
+          country: "N/A",
+          bio: "",
+          followers: 0,
+          engagement_rate: 0,
+          website: "",
+          instagram: undefined,
+          facebook: undefined,
+          cover_image: "",
+          opportunity_score: 0,
+          tier: "none",
+          verified: false,
+          created_at: "",
+        },
+      }))
       .filter((l) => {
         const matchesFilter = filter === "all" || l.status === filter;
         const searchLower = query.toLowerCase();
@@ -113,7 +120,7 @@ function LeadsPage() {
           l.business.city.toLowerCase().includes(searchLower);
         return matchesFilter && matchesQuery;
       });
-  }, [leadsData, businessesData, filter, query]);
+  }, [leadsData, filter, query]);
 
   if (leadsError) {
     return (
@@ -195,7 +202,7 @@ function LeadsPage() {
                 </tr>
               </thead>
               <tbody>
-                {leadsLoading || bizLoading ? (
+                {leadsLoading ? (
                   <tr>
                     <td colSpan={6} className="px-4 py-10 text-center">
                       <Loader2 className="mx-auto size-6 animate-spin text-muted-foreground" />

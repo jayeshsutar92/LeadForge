@@ -17,7 +17,7 @@ class CRMRepository:
     async def get_lead(self, lead_id: UUID, user_id: UUID) -> Lead | None:
         stmt = (
             select(Lead)
-            .options(selectinload(Lead.activities))
+            .options(selectinload(Lead.activities), selectinload(Lead.business))
             .where(Lead.id == lead_id, Lead.user_id == user_id)
         )
         result = await self.session.execute(stmt)
@@ -26,7 +26,7 @@ class CRMRepository:
     async def get_lead_by_business(self, business_id: UUID, user_id: UUID) -> Lead | None:
         stmt = (
             select(Lead)
-            .options(selectinload(Lead.activities))
+            .options(selectinload(Lead.activities), selectinload(Lead.business))
             .where(Lead.business_id == business_id, Lead.user_id == user_id)
         )
         result = await self.session.execute(stmt)
@@ -106,7 +106,7 @@ class CRMRepository:
             stmt = stmt.order_by(Lead.created_at.desc())
 
         # Pagination
-        stmt = stmt.limit(limit).offset(offset)
+        stmt = stmt.options(selectinload(Lead.business)).limit(limit).offset(offset)
 
         total = await self.session.scalar(count_stmt) or 0
         result = await self.session.execute(stmt)

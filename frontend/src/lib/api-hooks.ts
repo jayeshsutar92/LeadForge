@@ -24,6 +24,7 @@ export interface BusinessListResponse {
 export interface LeadResponse {
   id: string;
   business_id: string;
+  business?: BusinessCard;
   status: string;
   priority: number;
   source: string;

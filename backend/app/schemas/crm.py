@@ -6,6 +6,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, AliasChoices
 
+from app.schemas.business import BusinessCard
+
 
 # ─── Activity Schemas ─────────────────────────────────────────────────────────
 
@@ -56,6 +58,7 @@ class LeadUpdate(BaseModel):
 class LeadResponse(LeadBase):
     id: UUID
     business_id: UUID
+    business: Optional[BusinessCard] = None
     assigned_to: Optional[UUID] = None
     last_contacted: Optional[datetime] = None
     created_at: datetime
