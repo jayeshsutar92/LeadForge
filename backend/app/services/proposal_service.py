@@ -131,6 +131,9 @@ class ProposalService:
             return result
         except Exception as e:
             logger.error(f"AI generation failed for proposal: {e}")
+            error_str = str(e).lower()
+            if "rate limit" in error_str or "429" in error_str:
+                raise HTTPException(status_code=429, detail="The AI provider is currently overloaded. Please try again in a few minutes.")
             raise ValueError(f"AI generation failed: {e}")
 
     async def generate_proposal(self, opportunity_id: UUID, template_type: str = "standard", user_id: UUID | None = None) -> Proposal:
@@ -153,14 +156,22 @@ class ProposalService:
             if business:
                 business_name = business.name
         
-        content = await self._generate_content_from_opp(opp.data, template_type, business_name)
-        
-        proposal = await self.repo.create(opportunity_id, version, content)
-        
-        key = self._cache_key(str(opportunity_id))
-        await self._set_cache(key, proposal)
-        
-        return proposal
+        lock_key = f"lock:proposal_generate:{opportunity_id}"
+        is_locked = await self.redis.set(lock_key, "1", nx=True, ex=300)
+        if not is_locked:
+            raise HTTPException(status_code=409, detail="Proposal generation is already in progress for this opportunity. Please wait.")
+            
+        try:
+            content = await self._generate_content_from_opp(opp.data, template_type, business_name)
+            
+            proposal = await self.repo.create(opportunity_id, version, content)
+            
+            key = self._cache_key(str(opportunity_id))
+            await self._set_cache(key, proposal)
+            
+            return proposal
+        finally:
+            await self.redis.delete(lock_key)
 
     async def update_proposal(self, proposal_id: UUID, content: dict, user_id: UUID | None = None) -> Proposal:
         if user_id:

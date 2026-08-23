@@ -61,10 +61,11 @@ Search Results:
 {json.dumps(search_results, indent=2)}
 
 Task:
-1. Review the search results and identify the OFFICIAL profiles for this exact business. Be careful not to select profiles of similarly named businesses in other cities.
-2. For each verified profile, assign a confidence score (0-100).
-3. Determine the 'recommended_platform' for outreach based on which profile seems most active or professional (e.g., if Instagram is 95 confidence and Facebook is 80, recommend Instagram).
-4. Generate a short, personalized outreach message for EACH discovered platform. Do NOT mention that you searched for them, just say you came across their profile.
+1. Review the search results and identify the OFFICIAL profiles for this exact business.
+2. If you cannot confidently identify an official profile, you MUST STILL return the BEST candidate profile(s) you found. NEVER return an empty profiles list if you have candidate URLs.
+3. For each profile, assign a confidence score (0-100). If it's a candidate but you aren't certain, assign a lower confidence score (e.g., under 80).
+4. Determine the 'recommended_platform' for outreach based on which profile seems most active or professional (e.g., if Instagram is 95 confidence and Facebook is 80, recommend Instagram).
+5. Generate a short, personalized outreach message for EACH discovered platform. Do NOT mention that you searched for them, just say you came across their profile.
 
 Format your output strictly as a JSON object adhering to this schema. DO NOT include markdown formatting or extra text.
 """

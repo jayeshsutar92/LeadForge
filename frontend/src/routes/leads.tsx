@@ -74,7 +74,6 @@ function LeadsPage() {
     isError: leadsError,
   } = useLeads({ limit: 100 });
 
-
   const { data: selectedLeadDetail, isLoading: leadDetailLoading } = useLeadDetail(selectedLeadId);
   const { data: selectedBizDetail, isLoading: bizDetailLoading } = useBusinessDetail(
     selectedLeadDetail?.business?.slug || null,
@@ -391,7 +390,8 @@ function LeadsPage() {
                                         p.confidence > 80 ? "text-success" : "text-warning"
                                       }
                                     >
-                                      {p.confidence}% match
+                                      {p.confidence > 80 ? "Verified Candidate" : "Possible Match"}{" "}
+                                      ({p.confidence}%)
                                     </span>
                                   </div>
                                   <a
