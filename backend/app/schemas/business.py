@@ -1,11 +1,12 @@
 from typing import Optional
 from datetime import datetime
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
 
 class BusinessCard(BaseModel):
-    id: str
+    id: UUID
     slug: str
     name: str
     category: str

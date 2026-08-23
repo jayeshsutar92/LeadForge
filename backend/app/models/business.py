@@ -48,3 +48,20 @@ class Business(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         back_populates="business",
         cascade="all, delete-orphan",
     )
+
+    @property
+    def opportunity_score(self) -> int:
+        from app.services.scoring import compute_opportunity_score
+        return compute_opportunity_score({
+            "website": self.website,
+            "followers": self.followers,
+            "engagement_rate": self.engagement_rate,
+            "posts_last_30": self.posts_last_30,
+            "has_online_orders": self.has_online_orders,
+            "category": self.category,
+        })
+
+    @property
+    def tier(self) -> str:
+        from app.services.scoring import score_tier
+        return score_tier(self.opportunity_score)
