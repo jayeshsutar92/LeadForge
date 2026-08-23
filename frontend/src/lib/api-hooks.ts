@@ -73,6 +73,7 @@ export const useDiscoverBusinesses = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["businesses"] });
       queryClient.invalidateQueries({ queryKey: ["leads"] });
+      queryClient.invalidateQueries({ queryKey: ["businesses", "stats"] });
     },
   });
 };
@@ -123,6 +124,7 @@ export const useUpdateLead = () => {
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["leads"] });
       queryClient.invalidateQueries({ queryKey: ["leads", variables.id] });
+      queryClient.invalidateQueries({ queryKey: ["businesses", "stats"] });
     },
   });
 };

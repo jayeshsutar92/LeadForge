@@ -34,7 +34,7 @@ class CRMRepository:
 
     async def create_lead(self, lead: Lead) -> Lead:
         self.session.add(lead)
-        await self.session.flush()
+        await self.session.commit()
         await self.session.refresh(lead)
         return lead
 
@@ -46,7 +46,7 @@ class CRMRepository:
         for key, value in kwargs.items():
             setattr(lead, key, value)
             
-        await self.session.flush()
+        await self.session.commit()
         await self.session.refresh(lead)
         return lead
 
@@ -55,7 +55,7 @@ class CRMRepository:
         if not lead:
             return False
         await self.session.delete(lead)
-        await self.session.flush()
+        await self.session.commit()
         return True
 
     async def list_leads(
@@ -116,6 +116,6 @@ class CRMRepository:
 
     async def create_activity(self, activity: Activity) -> Activity:
         self.session.add(activity)
-        await self.session.flush()
+        await self.session.commit()
         await self.session.refresh(activity)
         return activity
