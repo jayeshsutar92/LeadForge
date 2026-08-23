@@ -6,6 +6,7 @@ from .proposal import Proposal
 from .search_history import SearchHistory
 from .user import User
 from .lead import Lead, Activity
+from .social_intelligence import SocialIntelligence
 
 __all__ = [
     "Business",
@@ -17,4 +18,5 @@ __all__ = [
     "User",
     "Lead",
     "Activity",
+    "SocialIntelligence",
 ]
