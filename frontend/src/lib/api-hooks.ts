@@ -286,3 +286,44 @@ export function useSocialIntelligence(businessId: string | undefined) {
     enabled: !!businessId,
   });
 }
+
+// --- Delete Hooks ---
+
+export const useDeleteBusiness = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (slug: string) => {
+      await apiClient.delete(/businesses/ + slug);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["businesses"] });
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+    },
+  });
+};
+
+export const useDeleteLead = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await apiClient.delete(/crm/leads/ + id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+      queryClient.invalidateQueries({ queryKey: ["businesses", "stats"] });
+    },
+  });
+};
+
+export const useDeleteProposal = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ slug, proposalId }: { slug: string; proposalId: string }) => {
+      await apiClient.delete(/businesses/ + slug + /proposal/ + proposalId);
+    },
+    onSuccess: (data, { slug }) => {
+      queryClient.invalidateQueries({ queryKey: ["businesses", slug, "proposal"] });
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+    },
+  });
+};

@@ -15,6 +15,7 @@ import {
   Copy,
   Check,
   Radar,
+  Trash2,
 } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
@@ -29,6 +30,7 @@ import {
   useLeadDetail,
   useBusinessDetail,
   useUpdateLead,
+  useDeleteLead,
   useSocialIntelligence,
 } from "@/lib/api-hooks";
 import {
@@ -67,6 +69,7 @@ function LeadsPage() {
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const navigate = useNavigate();
   const updateLead = useUpdateLead();
+  const deleteLead = useDeleteLead();
 
   const {
     data: leadsData,
@@ -281,15 +284,35 @@ function LeadsPage() {
                       {selectedBiz?.category} · {selectedBiz?.city}, {selectedBiz?.country}
                     </p>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Close detail panel"
-                    className="size-8 shrink-0"
-                    onClick={() => setSelectedLeadId(null)}
-                  >
-                    <X className="size-4" />
-                  </Button>
+                  <div className="flex shrink-0 items-center gap-1.5 ml-4">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Delete lead"
+                      className="size-8 shrink-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => {
+                        if (selectedLeadDetail?.id && window.confirm("Are you sure you want to delete this lead?")) {
+                          deleteLead.mutate(selectedLeadDetail.id, {
+                            onSuccess: () => {
+                              setSelectedLeadId(null);
+                            },
+                          });
+                        }
+                      }}
+                      disabled={deleteLead.isPending}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Close detail panel"
+                      className="size-8 shrink-0"
+                      onClick={() => setSelectedLeadId(null)}
+                    >
+                      <X className="size-4" />
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-3 border-b border-border p-4">

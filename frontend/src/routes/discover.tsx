@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { MapPin, Radar, Sparkles, Wand2, Loader2 } from "lucide-react";
+import { MapPin, Radar, Sparkles, Wand2, Loader2, Trash2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -15,6 +15,7 @@ import {
   useBusinessStats,
   useBusinesses,
   useDiscoverBusinesses,
+  useDeleteBusiness,
   type BusinessCard,
 } from "@/lib/api-hooks";
 import { getErrorMessage } from "@/lib/api";
@@ -62,6 +63,7 @@ function Discover() {
     refetch: refetchBiz,
   } = useBusinesses({ limit: 12 });
   const discoverBusinesses = useDiscoverBusinesses();
+  const deleteBusiness = useDeleteBusiness();
 
   const [discoveryMode, setDiscoveryMode] = useState<"official" | "social">("official");
 
@@ -373,10 +375,34 @@ function Discover() {
                             </p>
                             <p className="text-[11px] text-muted-foreground">score</p>
                           </div>
-                          <div className="text-right">
-                            <p className="text-xs text-muted-foreground">
-                              {b.created_at ? new Date(b.created_at).toLocaleDateString() : "N/A"}
-                            </p>
+                          <div className="flex items-end justify-between">
+                            <div className="text-right">
+                              <p className="text-xs text-muted-foreground">
+                                {b.created_at ? new Date(b.created_at).toLocaleDateString() : "N/A"}
+                              </p>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 -mr-2"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (window.confirm("Are you sure you want to delete this discovered business and all its leads/proposals?")) {
+                                  deleteBusiness.mutate(b.slug, {
+                                    onSuccess: () => {
+                                      toast.success("Business deleted successfully");
+                                      refetchStats();
+                                    },
+                                    onError: (err) => {
+                                      toast.error(getErrorMessage(err) || "Failed to delete business");
+                                    }
+                                  });
+                                }
+                              }}
+                              disabled={deleteBusiness.isPending}
+                            >
+                              <Trash2 className="size-3.5" />
+                            </Button>
                           </div>
                         </div>
                       </article>

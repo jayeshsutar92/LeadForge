@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { FileText, Sparkles, Loader2 } from "lucide-react";
+import { FileText, Sparkles, Loader2, Trash2 } from "lucide-react";
 import { useMemo } from "react";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/api";
@@ -23,6 +23,7 @@ import {
   useGenerateOpportunity,
   useProposal,
   useGenerateProposal,
+  useDeleteProposal,
   type LeadResponse,
   type BusinessCard,
 } from "@/lib/api-hooks";
@@ -136,6 +137,7 @@ function ProposalCard({ lead, biz }: { lead: LeadResponse; biz: BusinessCard | u
 
   const generateOpp = useGenerateOpportunity();
   const generateProp = useGenerateProposal();
+  const deleteProposal = useDeleteProposal();
 
   const isGenerating = generateOpp.isPending || generateProp.isPending || proposalLoading;
 
@@ -271,6 +273,26 @@ function ProposalCard({ lead, biz }: { lead: LeadResponse; biz: BusinessCard | u
                   </div>
                 </DialogContent>
               </Dialog>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                onClick={() => {
+                  if (biz?.slug && proposal?.id && window.confirm("Are you sure you want to delete this proposal?")) {
+                    deleteProposal.mutate({ slug: biz.slug, proposalId: proposal.id }, {
+                      onSuccess: () => {
+                        toast.success("Proposal deleted successfully");
+                      },
+                      onError: (err) => {
+                        toast.error(getErrorMessage(err) || "Failed to delete proposal");
+                      }
+                    });
+                  }
+                }}
+                disabled={deleteProposal.isPending}
+              >
+                <Trash2 className="size-4" />
+              </Button>
             </>
           ) : (
             <Button size="sm" onClick={handleGenerate} disabled={isGenerating || !bi?.id}>
