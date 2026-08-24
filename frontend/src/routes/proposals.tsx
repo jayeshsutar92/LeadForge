@@ -278,15 +278,22 @@ function ProposalCard({ lead, biz }: { lead: LeadResponse; biz: BusinessCard | u
                 size="icon"
                 className="size-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                 onClick={() => {
-                  if (biz?.slug && proposal?.id && window.confirm("Are you sure you want to delete this proposal?")) {
-                    deleteProposal.mutate({ slug: biz.slug, proposalId: proposal.id }, {
-                      onSuccess: () => {
-                        toast.success("Proposal deleted successfully");
+                  if (
+                    biz?.slug &&
+                    proposal?.id &&
+                    window.confirm("Are you sure you want to delete this proposal?")
+                  ) {
+                    deleteProposal.mutate(
+                      { slug: biz.slug, proposalId: proposal.id },
+                      {
+                        onSuccess: () => {
+                          toast.success("Proposal deleted successfully");
+                        },
+                        onError: (err) => {
+                          toast.error(getErrorMessage(err) || "Failed to delete proposal");
+                        },
                       },
-                      onError: (err) => {
-                        toast.error(getErrorMessage(err) || "Failed to delete proposal");
-                      }
-                    });
+                    );
                   }
                 }}
                 disabled={deleteProposal.isPending}

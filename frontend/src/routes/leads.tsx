@@ -291,7 +291,10 @@ function LeadsPage() {
                       aria-label="Delete lead"
                       className="size-8 shrink-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                       onClick={() => {
-                        if (selectedLeadDetail?.id && window.confirm("Are you sure you want to delete this lead?")) {
+                        if (
+                          selectedLeadDetail?.id &&
+                          window.confirm("Are you sure you want to delete this lead?")
+                        ) {
                           deleteLead.mutate(selectedLeadDetail.id, {
                             onSuccess: () => {
                               setSelectedLeadId(null);

@@ -12,8 +12,9 @@ export function getRouter() {
     defaultOptions: {
       queries: {
         staleTime: 1000 * 60 * 5, // 5 minutes
-        retry: (failureCount, error: any) => {
-          if (error?.response?.status === 429 || error?.status === 429) return false;
+        retry: (failureCount: number, error: unknown) => {
+          const err = error as any;
+          if (err?.response?.status === 429 || err?.status === 429) return false;
           return failureCount < 1;
         },
         refetchOnWindowFocus: false,

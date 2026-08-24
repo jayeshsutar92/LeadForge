@@ -387,15 +387,21 @@ function Discover() {
                               className="size-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 -mr-2"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                if (window.confirm("Are you sure you want to delete this discovered business and all its leads/proposals?")) {
+                                if (
+                                  window.confirm(
+                                    "Are you sure you want to delete this discovered business and all its leads/proposals?",
+                                  )
+                                ) {
                                   deleteBusiness.mutate(b.slug, {
                                     onSuccess: () => {
                                       toast.success("Business deleted successfully");
                                       refetchStats();
                                     },
                                     onError: (err) => {
-                                      toast.error(getErrorMessage(err) || "Failed to delete business");
-                                    }
+                                      toast.error(
+                                        getErrorMessage(err) || "Failed to delete business",
+                                      );
+                                    },
                                   });
                                 }
                               }}

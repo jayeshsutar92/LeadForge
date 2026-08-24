@@ -306,7 +306,7 @@ export const useDeleteLead = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      await apiClient.delete(/crm/leads/ + id);
+      await apiClient.delete(/crm/adels / +id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["leads"] });

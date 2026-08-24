@@ -7,7 +7,6 @@ import { SectionHeader, StatCard } from "@/components/leadforge-ui";
 import { Button } from "@/components/ui/button";
 import {
   useLeads,
-  
   useIntelligence,
   useOpportunity,
   useGenerateOpportunity,
