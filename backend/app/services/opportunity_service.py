@@ -74,21 +74,31 @@ class OpportunityService:
         if existing_opp:
             return existing_opp
             
-        # Run AI opportunity generation
-        opp_data = await generate_opportunity(bi.data, business.name)
+        import asyncio
+        lock_key = f"lock:opportunity_generate:{bi.id}"
+        is_locked = await self.redis.set(lock_key, "1", nx=True, ex=60)
         
-        opp = await self.repo.create(bi.id, opp_data)
-        
-        # Update cache
-        key = self._cache_key(str(bi.id))
-        await self._set_cache(key, opp)
-        
-        # Optionally, update the Business table opportunity_score and opportunity_tier
-        # business.opportunity_score = opp_data["score"]
-        # business.opportunity_tier = opp_data["tier"]
-        # await self.session.commit() # Wait, the user said keep the API intact. I'll just return the opportunity.
-        
-        return opp
+        if not is_locked:
+            for _ in range(10):
+                await asyncio.sleep(2)
+                existing_opp = await self.repo.get_latest_by_business_intelligence(bi.id)
+                if existing_opp:
+                    return existing_opp
+            raise HTTPException(status_code=409, detail="Generation in progress, please wait.")
+            
+        try:
+            # Run AI opportunity generation
+            opp_data = await generate_opportunity(bi.data, business.name)
+            
+            opp = await self.repo.create(bi.id, opp_data)
+            
+            # Update cache
+            key = self._cache_key(str(bi.id))
+            await self._set_cache(key, opp)
+            
+            return opp
+        finally:
+            await self.redis.delete(lock_key)
 
     async def list_by_bi(self, bi_id: UUID, limit: int = 10, offset: int = 0) -> list[Opportunity]:
         return await self.repo.list_by_business_intelligence(bi_id, limit=limit, offset=offset)

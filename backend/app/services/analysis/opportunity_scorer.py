@@ -53,9 +53,21 @@ async def generate_opportunity(bi_data: Dict[str, Any], business_name: str) -> D
     The score should be between 0 and 100. High score if they have no website or a poor website, low score if they have a great modern website.
     """
     
-    try:
-        result = await provider.generate_json(prompt=prompt, schema=schema)
-        return result
-    except Exception as e:
-        logger.error(f"AI generation failed for opportunity scoring: {e}")
-        raise HTTPException(status_code=502, detail=f"AI generation failed: {e}")
+    import asyncio
+    max_retries = 3
+    base_delay = 2
+    for attempt in range(max_retries):
+        try:
+            result = await provider.generate_json(prompt=prompt, schema=schema)
+            return result
+        except Exception as e:
+            error_str = str(e).lower()
+            if "rate limit" in error_str or "429" in error_str:
+                if attempt < max_retries - 1:
+                    logger.warning(f"Rate limit hit, retrying in {base_delay * (2 ** attempt)}s...")
+                    await asyncio.sleep(base_delay * (2 ** attempt))
+                    continue
+                else:
+                    raise HTTPException(status_code=429, detail="Generation in progress, please wait.")
+            logger.error(f"AI generation failed for opportunity scoring: {e}")
+            raise HTTPException(status_code=502, detail=f"AI generation failed: {e}")

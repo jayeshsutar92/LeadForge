@@ -394,14 +394,20 @@ function LeadsPage() {
                                       ({p.confidence}%)
                                     </span>
                                   </div>
-                                  <a
-                                    href={p.url}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="text-muted-foreground hover:underline truncate"
-                                  >
-                                    @{p.username}
-                                  </a>
+                                  {p.url && p.url !== "#" ? (
+                                    <a
+                                      href={p.url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="text-muted-foreground hover:underline truncate"
+                                    >
+                                      @{p.username || "Profile"}
+                                    </a>
+                                  ) : (
+                                    <span className="text-muted-foreground truncate">
+                                      @{p.username || "Unknown ID"}
+                                    </span>
+                                  )}
                                 </div>
                               ))}
                             </div>

@@ -99,7 +99,17 @@ Format your output strictly as a JSON object adhering to this schema. DO NOT inc
     }
     
     settings = get_settings()
-    provider = ProviderFactory.create(settings.AI_MODEL)
+    config = settings.model_dump()
+    
+    try:
+        provider = ProviderFactory.get_provider(settings.ai_provider, config=config)
+    except Exception as e:
+        logger.error(f"Failed to load AI provider: {e}")
+        return {
+            "profiles": [],
+            "recommended_platform": None,
+            "messages": {}
+        }
     
     try:
         result = await provider.generate_json(prompt=prompt, schema=schema)
