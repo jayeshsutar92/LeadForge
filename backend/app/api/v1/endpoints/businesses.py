@@ -109,6 +109,7 @@ async def discover_businesses(
     bi_service = BusinessIntelligenceService(session)
     
     new_leads = 0
+    failed_imports = 0
     discovered_cards = []
     social_intelligence_slugs = []
     
@@ -145,7 +146,7 @@ async def discover_businesses(
             discovered_cards.append(biz)
             
             lead_create = LeadCreate(
-                business_id=UUID(biz.id),
+                business_id=biz.id,
                 source="Discovery Scan",
                 notes=f"Discovered scanning for {payload.query} in {payload.region}"
             )
@@ -164,7 +165,11 @@ async def discover_businesses(
             new_leads += 1
             
         except Exception as e:
-            logger.error(f"Failed to process discovered business {place.get('name')}: {e}")
+            failed_imports += 1
+            logger.exception(f"Failed to process discovered business {place.get('name')}: {e}")
+
+    if failed_imports > 0 and failed_imports == len(valid_results):
+        raise HTTPException(status_code=500, detail="Failed to import any businesses from discovery due to internal errors.")
 
     # Trigger Social Intelligence sequentially in a single background task
     if social_intelligence_slugs:
