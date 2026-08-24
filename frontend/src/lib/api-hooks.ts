@@ -293,7 +293,7 @@ export const useDeleteBusiness = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (slug: string) => {
-      await apiClient.delete(/businesses/ + slug);
+      await apiClient.delete(`/businesses/${slug}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["businesses"] });
@@ -306,7 +306,7 @@ export const useDeleteLead = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      await apiClient.delete(/crm/adels / +id);
+      await apiClient.delete(`/crm/leads/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["leads"] });
@@ -319,7 +319,7 @@ export const useDeleteProposal = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ slug, proposalId }: { slug: string; proposalId: string }) => {
-      await apiClient.delete(/businesses/ + slug + /proposal/ + proposalId);
+      await apiClient.delete(`/businesses/${slug}/proposal/${proposalId}`);
     },
     onSuccess: (data, { slug }) => {
       queryClient.invalidateQueries({ queryKey: ["businesses", slug, "proposal"] });

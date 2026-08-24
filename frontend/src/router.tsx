@@ -13,7 +13,7 @@ export function getRouter() {
       queries: {
         staleTime: 1000 * 60 * 5, // 5 minutes
         retry: (failureCount: number, error: unknown) => {
-          const err = error as any;
+          const err = error as { status?: number; response?: { status?: number } };
           if (err?.response?.status === 429 || err?.status === 429) return false;
           return failureCount < 1;
         },
