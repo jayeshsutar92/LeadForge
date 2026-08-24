@@ -24,3 +24,8 @@ class ProposalResponse(ProposalBase):
     id: str = Field(..., description="Proposal record ID")
     created_at: datetime = Field(..., description="Timestamp of creation")
     updated_at: datetime = Field(..., description="Timestamp of last update")
+
+
+class ProposalSummaryResponse(BaseModel):
+    slug: str = Field(..., description="Business slug")
+    proposal: ProposalResponse

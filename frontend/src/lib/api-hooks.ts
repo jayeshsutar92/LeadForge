@@ -220,6 +220,7 @@ export const useGenerateProposal = () => {
     },
     onSuccess: (data, { slug, opportunityId }) => {
       queryClient.invalidateQueries({ queryKey: ["businesses", slug, "proposal", opportunityId] });
+      queryClient.invalidateQueries({ queryKey: ["proposals", "all"] });
     },
   });
 };
@@ -234,6 +235,17 @@ export const useProposal = (slug: string | null, opportunityId: string | null) =
     },
     enabled: !!slug && !!opportunityId,
     retry: false,
+  });
+};
+
+export const useAllProposals = () => {
+  return useQuery({
+    queryKey: ["proposals", "all"],
+    queryFn: async () => {
+      const res = await apiClient.get("/crm/proposals");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return res.data as Array<{ slug: string; proposal: any }>;
+    },
   });
 };
 
@@ -323,6 +335,7 @@ export const useDeleteProposal = () => {
     },
     onSuccess: (data, { slug }) => {
       queryClient.invalidateQueries({ queryKey: ["businesses", slug, "proposal"] });
+      queryClient.invalidateQueries({ queryKey: ["proposals", "all"] });
       queryClient.invalidateQueries({ queryKey: ["leads"] });
     },
   });

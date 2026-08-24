@@ -10,10 +10,53 @@ from app.api.deps import get_current_user
 from app.db.session import get_db_session
 from app.models.user import User
 from app.schemas.crm import ActivityCreate, LeadCreate, LeadDetailResponse, LeadListResponse, LeadResponse, LeadUpdate
+from app.schemas.proposal import ProposalSummaryResponse
 from app.services.crm_service import CRMService
 from app.services.business_service import BusinessService
 
+from sqlalchemy import select
+from app.models.proposal import Proposal
+from app.models.opportunity import Opportunity
+from app.models.business_intelligence import BusinessIntelligence
+from app.models.business import Business
+
 router = APIRouter()
+
+
+# ─── Proposals ────────────────────────────────────────────────────────────────
+
+@router.get("/proposals", response_model=list[ProposalSummaryResponse])
+async def list_proposals(
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+):
+    stmt = (
+        select(Proposal, Business.slug)
+        .join(Opportunity, Proposal.opportunity_id == Opportunity.id)
+        .join(BusinessIntelligence, Opportunity.business_intelligence_id == BusinessIntelligence.id)
+        .join(Business, BusinessIntelligence.business_id == Business.id)
+        .where(Business.user_id == user.id)
+        .order_by(Proposal.created_at.desc())
+    )
+    result = await session.execute(stmt)
+    rows = result.all()
+    
+    # Map to schema
+    return [
+        {
+            "slug": slug,
+            "proposal": {
+                "id": str(prop.id),
+                "opportunity_id": str(prop.opportunity_id),
+                "version": prop.version,
+                "content": prop.content,
+                "created_at": prop.created_at,
+                "updated_at": prop.updated_at,
+            }
+        }
+        for prop, slug in rows
+    ]
+
 
 
 # ─── Leads ────────────────────────────────────────────────────────────────────

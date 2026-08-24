@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { FileText, Sparkles, Loader2, Trash2 } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { getErrorMessage } from "@/lib/api";
+import { getErrorMessage, apiClient } from "@/lib/api";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { AppShell } from "@/components/app-shell";
 import { StatCard } from "@/components/leadforge-ui";
@@ -21,9 +22,9 @@ import {
   useIntelligence,
   useOpportunity,
   useGenerateOpportunity,
-  useProposal,
   useGenerateProposal,
   useDeleteProposal,
+  useAllProposals,
   type LeadResponse,
   type BusinessCard,
 } from "@/lib/api-hooks";
@@ -55,6 +56,8 @@ function Proposals() {
     isLoading: leadsLoading,
     isError: leadsError,
   } = useLeads({ limit: 100 });
+
+  const { data: allProposalsData } = useAllProposals();
 
   const activeProposals = useMemo(() => {
     if (!leadsData?.results) return [];
@@ -117,9 +120,17 @@ function Proposals() {
           </div>
         ) : (
           <section className="grid gap-3 md:grid-cols-2">
-            {activeProposals.map(({ lead, biz }) => (
-              <ProposalCard key={lead.id} lead={lead} biz={biz as BusinessCard | undefined} />
-            ))}
+            {activeProposals.map(({ lead, biz }) => {
+              const matchedProposal = allProposalsData?.find((p) => p.slug === biz?.slug)?.proposal;
+              return (
+                <ProposalCard
+                  key={lead.id}
+                  lead={lead}
+                  biz={biz as BusinessCard | undefined}
+                  initialProposal={matchedProposal}
+                />
+              );
+            })}
           </section>
         )}
       </div>
@@ -127,38 +138,70 @@ function Proposals() {
   );
 }
 
-function ProposalCard({ lead, biz }: { lead: LeadResponse; biz: BusinessCard | undefined }) {
-  const { data: bi } = useIntelligence(biz?.slug || null);
-  const { data: opp } = useOpportunity(biz?.slug || null, bi?.id || null);
-  const { data: proposal, isLoading: proposalLoading } = useProposal(
-    biz?.slug || null,
-    opp?.id || null,
-  );
+function ProposalCard({
+  lead,
+  biz,
+  initialProposal,
+}: {
+  lead: LeadResponse;
+  biz: BusinessCard | undefined;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  initialProposal: { id?: string; content?: any; updated_at?: string } | undefined;
+}) {
+  const [isGenerating, setIsGenerating] = useState(false);
+  const queryClient = useQueryClient();
 
   const generateOpp = useGenerateOpportunity();
   const generateProp = useGenerateProposal();
   const deleteProposal = useDeleteProposal();
 
-  const isGenerating = generateOpp.isPending || generateProp.isPending || proposalLoading;
-
   const handleGenerate = async () => {
-    if (!biz?.slug || !bi?.id) return;
+    if (!biz?.slug) return;
     try {
-      let currentOppId = opp?.id;
+      setIsGenerating(true);
+
+      // Fetch intelligence if we don't have it
+      const biData = await queryClient.fetchQuery({
+        queryKey: ["businesses", biz.slug, "intelligence"],
+        queryFn: async () =>
+          (await apiClient.get(`/businesses/${biz.slug}/intelligence/latest`)).data,
+      });
+
+      if (!biData?.id) {
+        throw new Error("Could not load business intelligence data.");
+      }
+
+      let currentOppId = null;
+      try {
+        const oppData = await queryClient.fetchQuery({
+          queryKey: ["businesses", biz.slug, "opportunity", biData.id],
+          queryFn: async () =>
+            (await apiClient.get(`/businesses/${biz.slug}/intelligence/${biData.id}/opportunity`))
+              .data,
+        });
+        currentOppId = oppData?.id;
+      } catch {
+        // Might 404, which is expected before generation
+      }
+
       if (!currentOppId) {
-        const newOpp = await generateOpp.mutateAsync({ slug: biz.slug, biId: bi.id });
+        const newOpp = await generateOpp.mutateAsync({ slug: biz.slug, biId: biData.id });
         currentOppId = newOpp.id;
       }
+
       if (currentOppId) {
         await generateProp.mutateAsync({ slug: biz.slug, opportunityId: currentOppId });
         toast.success("Proposal generated successfully");
       }
     } catch (err: unknown) {
       toast.error(getErrorMessage(err) || "Failed to generate proposal. Please try again.");
+    } finally {
+      setIsGenerating(false);
     }
   };
 
   const estimatedValue = (biz?.opportunity_score || 70) * 120;
+  const proposal = initialProposal;
 
   return (
     <article className="panel flex flex-col p-5 transition-colors hover:border-border-strong">
