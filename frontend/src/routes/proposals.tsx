@@ -231,7 +231,7 @@ function ProposalCard({
 
       {proposal?.content && (
         <div className="mt-4 rounded-md bg-muted/30 p-3 text-xs text-muted-foreground line-clamp-3">
-          {proposal.content.executive_summary || proposal.content.title || "Proposal generated"}
+          {proposal.content?.executive_summary || proposal.content?.title || "Proposal generated"}
         </div>
       )}
 
@@ -248,10 +248,10 @@ function ProposalCard({
                 </DialogTrigger>
                 <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
                   <DialogHeader>
-                    <DialogTitle>{proposal.content.title || "Proposal Preview"}</DialogTitle>
+                    <DialogTitle>{proposal.content?.title || "Proposal Preview"}</DialogTitle>
                   </DialogHeader>
                   <div className="mt-4 space-y-4 text-sm">
-                    {proposal.content.executive_summary && (
+                    {proposal.content?.executive_summary && (
                       <div>
                         <div className="font-semibold text-base mb-1">Executive Summary</div>
                         <div className="whitespace-pre-wrap text-muted-foreground">
@@ -260,7 +260,7 @@ function ProposalCard({
                       </div>
                     )}
 
-                    {proposal.content.sections &&
+                    {proposal.content?.sections &&
                       Array.isArray(proposal.content.sections) &&
                       proposal.content.sections.map(
                         (
@@ -285,7 +285,7 @@ function ProposalCard({
                         ),
                       )}
 
-                    {proposal.content.pricing && (
+                    {proposal.content?.pricing && (
                       <div>
                         <div className="font-semibold text-base mb-1">Pricing & Investment</div>
                         <div className="whitespace-pre-wrap text-muted-foreground">
@@ -296,7 +296,7 @@ function ProposalCard({
                       </div>
                     )}
 
-                    {proposal.content.next_steps && (
+                    {proposal.content?.next_steps && (
                       <div>
                         <div className="font-semibold text-base mb-1">Next Steps</div>
                         <div className="whitespace-pre-wrap text-muted-foreground">
@@ -308,7 +308,7 @@ function ProposalCard({
                     )}
 
                     {/* Fallback for other arbitrary structure */}
-                    {!proposal.content.sections && !proposal.content.executive_summary && (
+                    {!proposal.content?.sections && !proposal.content?.executive_summary && (
                       <pre className="whitespace-pre-wrap text-xs text-muted-foreground bg-muted p-4 rounded-md">
                         {JSON.stringify(proposal.content, null, 2)}
                       </pre>

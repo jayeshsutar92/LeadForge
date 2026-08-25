@@ -7,8 +7,6 @@ import { SectionHeader, StatCard } from "@/components/leadforge-ui";
 import { Button } from "@/components/ui/button";
 import {
   useLeads,
-  useIntelligence,
-  useOpportunity,
   useGenerateOpportunity,
   useGenerateOutreach,
   useUpdateLead,
@@ -16,8 +14,9 @@ import {
   type BusinessCard,
 } from "@/lib/api-hooks";
 import { useState } from "react";
-import { getErrorMessage } from "@/lib/api";
 import { toast } from "sonner";
+import { getErrorMessage, apiClient } from "@/lib/api";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Select,
   SelectContent,
@@ -128,8 +127,8 @@ function Outreach() {
 }
 
 function OutreachCard({ lead, biz }: { lead: LeadResponse; biz: BusinessCard | undefined }) {
-  const { data: bi } = useIntelligence(biz?.slug || null);
-  const { data: opp } = useOpportunity(biz?.slug || null, bi?.id || null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const queryClient = useQueryClient();
 
   const [outreachText, setOutreachText] = useState<Record<string, unknown> | null>(null);
   const [strategy, setStrategy] = useState("helpful_observation");
@@ -139,14 +138,35 @@ function OutreachCard({ lead, biz }: { lead: LeadResponse; biz: BusinessCard | u
   const generateOutreach = useGenerateOutreach();
   const updateLead = useUpdateLead();
 
-  const isGenerating = generateOpp.isPending || generateOutreach.isPending || updateLead.isPending;
-
   const handleGenerate = async () => {
-    if (!biz?.slug || !bi?.id) return;
+    if (!biz?.slug) return;
     try {
-      let currentOppId = opp?.id;
+      setIsGenerating(true);
+
+      const biData = await queryClient.fetchQuery({
+        queryKey: ["businesses", biz.slug, "intelligence"],
+        queryFn: async () =>
+          (await apiClient.get(`/businesses/${biz.slug}/intelligence/latest`)).data,
+      });
+
+      if (!biData?.id) {
+        throw new Error("Could not load business intelligence data.");
+      }
+
+      let currentOppId = null;
+      try {
+        const oppData = await queryClient.fetchQuery({
+          queryKey: ["businesses", biz.slug, "opportunity", biData.id],
+          queryFn: async () =>
+            (await apiClient.get(`/businesses/${biz.slug}/intelligence/${biData.id}/opportunity`))
+              .data,
+        });
+        currentOppId = oppData?.id;
+      } catch {
+        // Might 404
+      }
       if (!currentOppId) {
-        const newOpp = await generateOpp.mutateAsync({ slug: biz.slug, biId: bi.id });
+        const newOpp = await generateOpp.mutateAsync({ slug: biz.slug, biId: biData.id });
         currentOppId = newOpp.id;
       }
       if (currentOppId) {
@@ -164,6 +184,8 @@ function OutreachCard({ lead, biz }: { lead: LeadResponse; biz: BusinessCard | u
       }
     } catch (err: unknown) {
       toast.error(getErrorMessage(err) || "Failed to draft outreach. Please try again.");
+    } finally {
+      setIsGenerating(false);
     }
   };
 
