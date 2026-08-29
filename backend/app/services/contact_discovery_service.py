@@ -72,7 +72,61 @@ class ContactDiscoveryService:
             logger.error(f"Contact discovery search failed for {business.slug}: {e}")
             pass
 
-        result_data = ContactDiscoveryResult(candidates=candidates)
+        # Verification and scoring
+        verified_candidates = []
+        best_by_platform = {}
+        for c in candidates:
+            score = 0
+            evidence = []
+            content = f"{c.title} {c.body}".lower()
+            
+            # Name match
+            if business.name and business.name.lower() in content:
+                score += 40
+                evidence.append("Name Match")
+            elif business.name and any(word.lower() in content for word in business.name.split() if len(word) > 3):
+                score += 20
+                evidence.append("Partial Name Match")
+                
+            # City/Location match
+            if business.city and business.city.lower() in content:
+                score += 30
+                evidence.append("City Match")
+                
+            # Category match
+            if business.category and business.category.lower() in content:
+                score += 15
+                evidence.append("Category Match")
+                
+            # Phone match (if available in business model, actually it's in BusinessContact or we can assume it's in the text)
+            # Address match
+            if business.address and business.address.split(',')[0].lower() in content:
+                score += 15
+                evidence.append("Address Match")
+                
+            # Cap at 100
+            score = min(score, 100)
+            c.confidence = score
+            c.evidence = evidence
+            
+            if score >= 70:
+                c.status = "Verified Candidate"
+            elif score >= 40:
+                c.status = "Possible Match"
+            else:
+                c.status = "Low Confidence"
+                
+            # Keep highest score per platform
+            if c.platform not in best_by_platform or best_by_platform[c.platform].confidence < score:
+                best_by_platform[c.platform] = c
+                
+        # Only include the best candidate for each platform
+        final_candidates = list(best_by_platform.values())
+        final_candidates.sort(key=lambda x: x.confidence, reverse=True)
+        
+        recommended = final_candidates[0].platform if final_candidates and final_candidates[0].status == "Verified Candidate" else None
+
+        result_data = ContactDiscoveryResult(candidates=final_candidates, recommended_platform=recommended)
         
         discovery = ContactDiscovery(
             business_id=business.id,

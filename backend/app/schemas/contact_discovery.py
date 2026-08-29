@@ -12,10 +12,14 @@ class ContactDiscoveryCandidate(BaseModel):
     href: str
     username: str | None = None
     body: str
+    confidence: int = 0
+    status: str = "Low Confidence"  # "Verified Candidate", "Possible Match", "Low Confidence"
+    evidence: list[str] = []
 
 
 class ContactDiscoveryResult(BaseModel):
     candidates: list[ContactDiscoveryCandidate]
+    recommended_platform: str | None = None
 
 
 class ContactDiscoveryResponse(BaseModel):

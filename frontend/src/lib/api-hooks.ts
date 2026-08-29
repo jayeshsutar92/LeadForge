@@ -48,6 +48,9 @@ export interface ContactDiscoveryCandidate {
   href: string;
   username?: string;
   body: string;
+  confidence: number;
+  status: string;
+  evidence: string[];
 }
 
 export interface ContactDiscoveryResponse {
@@ -55,6 +58,7 @@ export interface ContactDiscoveryResponse {
   business_id: string;
   data: {
     candidates: ContactDiscoveryCandidate[];
+    recommended_platform?: string;
   };
   created_at: string;
   updated_at: string;

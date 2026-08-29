@@ -431,41 +431,71 @@ function LeadsPage() {
                             <Loader2 className="size-3 animate-spin" /> Searching public profiles...
                           </div>
                         ) : contactDiscovery?.data ? (
-                          <div className="mt-3 space-y-2">
+                          <div className="mt-3 space-y-3">
                             {contactDiscovery.data.candidates?.length > 0 ? (
-                              contactDiscovery.data.candidates.map((p, i) => (
-                                <div
-                                  key={i}
-                                  className="flex flex-col gap-1 rounded bg-secondary/30 p-2 text-xs"
-                                >
-                                  <div className="flex items-center justify-between">
-                                    <span className="font-medium capitalize">
-                                      {p.platform.replace("_", " ")}
-                                    </span>
+                              <div className="space-y-2">
+                                {contactDiscovery.data.candidates.map((p, i) => (
+                                  <div
+                                    key={i}
+                                    className="flex flex-col gap-1.5 rounded bg-secondary/30 p-2 text-xs"
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <span className="font-medium capitalize">
+                                        {p.platform.replace("_", " ")}
+                                      </span>
+                                      <span
+                                        className={
+                                          p.confidence >= 70
+                                            ? "text-success font-semibold"
+                                            : p.confidence >= 40
+                                              ? "text-warning"
+                                              : "text-muted-foreground"
+                                        }
+                                      >
+                                        {p.status} ({p.confidence}%)
+                                      </span>
+                                    </div>
+                                    <p className="font-semibold line-clamp-1" title={p.title}>
+                                      {p.title}
+                                    </p>
+                                    {p.href && p.href !== "#" ? (
+                                      <a
+                                        href={p.href}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="text-muted-foreground hover:underline truncate"
+                                      >
+                                        {p.username ? `@${p.username}` : p.href}
+                                      </a>
+                                    ) : (
+                                      <span className="text-muted-foreground truncate">
+                                        {p.username ? `@${p.username}` : "Unknown ID"}
+                                      </span>
+                                    )}
+                                    {p.evidence && p.evidence.length > 0 && (
+                                      <p className="text-[10px] text-muted-foreground">
+                                        <span className="font-semibold">Evidence:</span>{" "}
+                                        {p.evidence.join(", ")}
+                                      </p>
+                                    )}
                                   </div>
-                                  <p className="font-semibold line-clamp-1" title={p.title}>
-                                    {p.title}
-                                  </p>
-                                  {p.href && p.href !== "#" ? (
-                                    <a
-                                      href={p.href}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className="text-muted-foreground hover:underline truncate"
-                                    >
-                                      {p.username ? `@${p.username}` : p.href}
-                                    </a>
-                                  ) : (
-                                    <span className="text-muted-foreground truncate">
-                                      {p.username ? `@${p.username}` : "Unknown ID"}
-                                    </span>
-                                  )}
-                                </div>
-                              ))
+                                ))}
+                              </div>
                             ) : (
                               <p className="text-xs text-muted-foreground italic">
                                 No public contact profiles found.
                               </p>
+                            )}
+
+                            {contactDiscovery.data.recommended_platform && (
+                              <div className="rounded border border-primary/20 bg-primary/5 p-2">
+                                <p className="text-[10px] uppercase text-primary font-semibold">
+                                  Recommended Outreach Platform
+                                </p>
+                                <p className="text-xs font-medium capitalize mt-0.5">
+                                  {contactDiscovery.data.recommended_platform.replace("_", " ")}
+                                </p>
+                              </div>
                             )}
                           </div>
                         ) : null}
