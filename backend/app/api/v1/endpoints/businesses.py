@@ -670,3 +670,31 @@ async def get_contact_discovery(
         raise HTTPException(status_code=404, detail="No contact discovery found")
         
     return record
+
+@router.post("/{slug}/contact-discovery/generate", response_model=ContactDiscoveryResponse)
+async def generate_contact_outreach_endpoint(
+    slug: str,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+):
+    biz_service = BusinessService(session)
+    business = await biz_service.business_repo.get_by_slug(slug, user.id)
+    if not business:
+        raise HTTPException(status_code=404, detail="Business not found")
+        
+    if business.website:
+        raise HTTPException(status_code=400, detail="Contact discovery outreach is only for businesses without a website")
+        
+    # Get phone if available
+    phone = ""
+    contact_service = BusinessContactService(session)
+    contacts = await contact_service.get_contacts_for_business(business.id)
+    for c in contacts:
+        if c.phone:
+            phone = c.phone
+            break
+            
+    try:
+        return await ContactDiscoveryService.generate_outreach(session, business, phone)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))

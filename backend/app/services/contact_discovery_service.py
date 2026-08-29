@@ -151,3 +151,46 @@ class ContactDiscoveryService:
         if record:
             return ContactDiscoveryResponse.model_validate(record)
         return None
+
+    @staticmethod
+    async def generate_outreach(session: AsyncSession, business: Business, phone: str = "") -> ContactDiscoveryResponse:
+        from app.services.analysis.contact_outreach_agent import generate_contact_outreach
+        
+        # Get existing discovery
+        discovery = await ContactDiscoveryService.get_latest_discovery(session, business.id)
+        if not discovery:
+            raise ValueError("Contact discovery must be performed before generating outreach.")
+            
+        verified_platforms = [
+            c.model_dump() for c in discovery.data.candidates if c.status == "Verified Candidate"
+        ]
+        
+        if not verified_platforms and not phone:
+            raise ValueError("No verified platforms or phone number available to generate outreach.")
+
+        # Generate outreach
+        result = await generate_contact_outreach(
+            business_name=business.name or "",
+            category=business.category or "",
+            city=business.city or "",
+            phone=phone,
+            verified_platforms=verified_platforms
+        )
+
+        messages = result.get("messages", {})
+        
+        # Update the database record
+        stmt = select(ContactDiscovery).where(ContactDiscovery.id == discovery.id)
+        res = await session.execute(stmt)
+        record = res.scalar_one_or_none()
+        
+        if record:
+            data_dict = record.data
+            data_dict["messages"] = messages
+            record.data = data_dict
+            session.add(record)
+            await session.commit()
+            await session.refresh(record)
+            return ContactDiscoveryResponse.model_validate(record)
+            
+        return discovery

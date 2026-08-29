@@ -59,6 +59,7 @@ export interface ContactDiscoveryResponse {
   data: {
     candidates: ContactDiscoveryCandidate[];
     recommended_platform?: string;
+    messages?: Record<string, string>;
   };
   created_at: string;
   updated_at: string;
@@ -384,6 +385,23 @@ export const useGenerateContactDiscovery = () => {
     mutationFn: async ({ slug }: { slug: string }) => {
       const res = await apiClient.post<ContactDiscoveryResponse>(
         `/businesses/${slug}/contact-discovery`,
+      );
+      return res.data;
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["businesses", variables.slug, "contact-discovery"],
+      });
+    },
+  });
+};
+
+export const useGenerateContactDiscoveryOutreach = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ slug }: { slug: string }) => {
+      const res = await apiClient.post<ContactDiscoveryResponse>(
+        `/businesses/${slug}/contact-discovery/generate`,
       );
       return res.data;
     },

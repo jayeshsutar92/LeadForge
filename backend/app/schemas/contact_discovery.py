@@ -20,6 +20,7 @@ class ContactDiscoveryCandidate(BaseModel):
 class ContactDiscoveryResult(BaseModel):
     candidates: list[ContactDiscoveryCandidate]
     recommended_platform: str | None = None
+    messages: dict[str, str] | None = None
 
 
 class ContactDiscoveryResponse(BaseModel):

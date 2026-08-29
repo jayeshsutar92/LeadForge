@@ -40,6 +40,7 @@ import {
   useSocialIntelligence,
   useContactDiscovery,
   useGenerateContactDiscovery,
+  useGenerateContactDiscoveryOutreach,
   type ContactDiscoveryCandidate,
 } from "@/lib/api-hooks";
 import {
@@ -227,11 +228,21 @@ function LeadsPage() {
     !selectedBiz?.website ? selectedBiz?.slug : undefined,
   );
   const generateContactDiscovery = useGenerateContactDiscovery();
+  const generateContactOutreach = useGenerateContactDiscoveryOutreach();
 
   const handleGenerateContactDiscovery = async () => {
     if (!selectedBiz?.slug) return;
     try {
       await generateContactDiscovery.mutateAsync({ slug: selectedBiz.slug });
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleGenerateContactOutreach = async () => {
+    if (!selectedBiz?.slug) return;
+    try {
+      await generateContactOutreach.mutateAsync({ slug: selectedBiz.slug });
     } catch (e) {
       console.error(e);
     }
@@ -617,6 +628,54 @@ function LeadsPage() {
                                       ))}
                                     </div>
                                   )}
+
+                                  {/* AI Outreach Section */}
+                                  <div className="mt-4 pt-4 border-t border-border/50">
+                                    <div className="flex items-center justify-between mb-3">
+                                      <p className="text-[10px] uppercase text-muted-foreground font-semibold">
+                                        AI Outreach Message
+                                      </p>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-6 text-[10px]"
+                                        onClick={handleGenerateContactOutreach}
+                                        disabled={
+                                          generateContactOutreach.isPending ||
+                                          contactDiscoveryLoading
+                                        }
+                                      >
+                                        {generateContactOutreach.isPending ? (
+                                          <Loader2 className="size-3 animate-spin mr-1" />
+                                        ) : null}
+                                        {contactDiscovery.data.messages &&
+                                        Object.keys(contactDiscovery.data.messages).length > 0
+                                          ? "Regenerate Message"
+                                          : "Generate Message"}
+                                      </Button>
+                                    </div>
+
+                                    {contactDiscovery.data.messages &&
+                                    Object.keys(contactDiscovery.data.messages).length > 0 ? (
+                                      <div className="space-y-2">
+                                        {Object.entries(contactDiscovery.data.messages).map(
+                                          ([platform, msg], i) => (
+                                            <MessageCopyCard
+                                              key={i}
+                                              platform={platform}
+                                              message={msg as string}
+                                            />
+                                          ),
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <p className="text-[11px] text-muted-foreground text-center py-2 italic bg-secondary/20 rounded">
+                                        {generateContactOutreach.isPending
+                                          ? "Generating tailored outreach messages..."
+                                          : "Click Generate to create tailored outreach messages."}
+                                      </p>
+                                    )}
+                                  </div>
                                 </>
                               );
                             })()}
