@@ -345,7 +345,7 @@ function ProposalCard({
               </Button>
             </>
           ) : (
-            <Button size="sm" onClick={handleGenerate} disabled={isGenerating || !bi?.id}>
+            <Button size="sm" onClick={handleGenerate} disabled={isGenerating || !biz?.slug}>
               {isGenerating ? (
                 <Loader2 className="size-3.5 mr-1.5 animate-spin" />
               ) : (

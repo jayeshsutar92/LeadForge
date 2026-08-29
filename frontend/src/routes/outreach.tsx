@@ -245,7 +245,7 @@ function OutreachCard({ lead, biz }: { lead: LeadResponse; biz: BusinessCard | u
             size="sm"
             className="h-7 text-xs shrink-0"
             onClick={handleGenerate}
-            disabled={isGenerating || !bi?.id}
+            disabled={isGenerating || !biz?.slug}
           >
             {isGenerating ? (
               <Loader2 className="size-3 mr-1 animate-spin" />
