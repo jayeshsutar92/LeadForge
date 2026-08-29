@@ -631,3 +631,42 @@ async def delete_contact(
 
     await contact_service.delete_contact(contact_id)
     return
+
+
+# ─── Contact Discovery ────────────────────────────────────────────────────────
+
+from app.services.contact_discovery_service import ContactDiscoveryService
+from app.schemas.contact_discovery import ContactDiscoveryResponse
+
+@router.post("/{slug}/contact-discovery", response_model=ContactDiscoveryResponse)
+async def generate_contact_discovery(
+    slug: str,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+):
+    biz_service = BusinessService(session)
+    business = await biz_service.business_repo.get_by_slug(slug, user.id)
+    if not business:
+        raise HTTPException(status_code=404, detail="Business not found")
+        
+    if business.website:
+        raise HTTPException(status_code=400, detail="Contact discovery is only for businesses without a website")
+        
+    return await ContactDiscoveryService.discover_contacts(session, business)
+
+@router.get("/{slug}/contact-discovery", response_model=ContactDiscoveryResponse)
+async def get_contact_discovery(
+    slug: str,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+):
+    biz_service = BusinessService(session)
+    business = await biz_service.business_repo.get_by_slug(slug, user.id)
+    if not business:
+        raise HTTPException(status_code=404, detail="Business not found")
+        
+    record = await ContactDiscoveryService.get_latest_discovery(session, business.id)
+    if not record:
+        raise HTTPException(status_code=404, detail="No contact discovery found")
+        
+    return record

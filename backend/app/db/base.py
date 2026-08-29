@@ -8,12 +8,15 @@ from app.models.proposal import Proposal
 from app.models.search_history import SearchHistory
 from app.models.user import User
 
+from app.models.contact_discovery import ContactDiscovery
+
 __all__ = [
     "Base",
     "Business",
     "BusinessContact",
     "BusinessIntelligence",
     "SocialIntelligence",
+    "ContactDiscovery",
     "Opportunity",
     "Proposal",
     "SearchHistory",

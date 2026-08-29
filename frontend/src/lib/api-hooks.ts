@@ -42,6 +42,24 @@ export interface LeadListResponse {
   results: LeadResponse[];
 }
 
+export interface ContactDiscoveryCandidate {
+  platform: string;
+  title: string;
+  href: string;
+  username?: string;
+  body: string;
+}
+
+export interface ContactDiscoveryResponse {
+  id: string;
+  business_id: string;
+  data: {
+    candidates: ContactDiscoveryCandidate[];
+  };
+  created_at: string;
+  updated_at: string;
+}
+
 // --- Hooks ---
 export const useBusinesses = (params?: Record<string, unknown>) => {
   return useQuery({
@@ -337,6 +355,38 @@ export const useDeleteProposal = () => {
       queryClient.invalidateQueries({ queryKey: ["businesses", slug, "proposal"] });
       queryClient.invalidateQueries({ queryKey: ["proposals", "all"] });
       queryClient.invalidateQueries({ queryKey: ["leads"] });
+    },
+  });
+};
+
+export const useContactDiscovery = (slug: string | null) => {
+  return useQuery({
+    queryKey: ["businesses", slug, "contact-discovery"],
+    queryFn: async () => {
+      if (!slug) return null;
+      const res = await apiClient.get<ContactDiscoveryResponse>(
+        `/businesses/${slug}/contact-discovery`,
+      );
+      return res.data;
+    },
+    enabled: !!slug,
+    retry: false,
+  });
+};
+
+export const useGenerateContactDiscovery = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ slug }: { slug: string }) => {
+      const res = await apiClient.post<ContactDiscoveryResponse>(
+        `/businesses/${slug}/contact-discovery`,
+      );
+      return res.data;
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["businesses", variables.slug, "contact-discovery"],
+      });
     },
   });
 };

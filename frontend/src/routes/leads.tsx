@@ -32,6 +32,8 @@ import {
   useUpdateLead,
   useDeleteLead,
   useSocialIntelligence,
+  useContactDiscovery,
+  useGenerateContactDiscovery,
 } from "@/lib/api-hooks";
 import {
   Select,
@@ -86,6 +88,19 @@ function LeadsPage() {
   const { data: socialIntel, isLoading: socialIntelLoading } = useSocialIntelligence(
     !selectedBiz?.website ? selectedBiz?.id : undefined,
   );
+  const { data: contactDiscovery, isLoading: contactDiscoveryLoading } = useContactDiscovery(
+    !selectedBiz?.website ? selectedBiz?.slug : undefined,
+  );
+  const generateContactDiscovery = useGenerateContactDiscovery();
+
+  const handleGenerateContactDiscovery = async () => {
+    if (!selectedBiz?.slug) return;
+    try {
+      await generateContactDiscovery.mutateAsync({ slug: selectedBiz.slug });
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const rows = useMemo(() => {
     if (!leadsData?.results) return [];
@@ -391,93 +406,161 @@ function LeadsPage() {
                   </dl>
 
                   {!selectedBiz?.website && (
-                    <div className="mt-4 border-t border-border pt-4">
-                      <p className="flex items-center gap-1.5 text-xs font-semibold">
-                        <Radar className="size-3.5 text-primary" /> Social Intelligence
-                      </p>
-
-                      {socialIntelLoading ? (
-                        <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                          <Loader2 className="size-3 animate-spin" /> Scanning social presence...
+                    <>
+                      <div className="mt-4 border-t border-border pt-4">
+                        <div className="flex items-center justify-between">
+                          <p className="flex items-center gap-1.5 text-xs font-semibold">
+                            <Search className="size-3.5 text-primary" /> Contact Discovery
+                          </p>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-6 text-[10px]"
+                            onClick={handleGenerateContactDiscovery}
+                            disabled={generateContactDiscovery.isPending || contactDiscoveryLoading}
+                          >
+                            {generateContactDiscovery.isPending ? (
+                              <Loader2 className="size-3 animate-spin mr-1" />
+                            ) : null}
+                            {contactDiscovery?.data ? "Re-discover" : "Discover Contacts"}
+                          </Button>
                         </div>
-                      ) : socialIntel?.data ? (
-                        <div className="mt-3 space-y-3">
-                          {socialIntel.data.profiles?.length > 0 ? (
-                            <div className="space-y-2">
-                              {socialIntel.data.profiles.map((p, i) => (
+
+                        {contactDiscoveryLoading ? (
+                          <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                            <Loader2 className="size-3 animate-spin" /> Searching public profiles...
+                          </div>
+                        ) : contactDiscovery?.data ? (
+                          <div className="mt-3 space-y-2">
+                            {contactDiscovery.data.candidates?.length > 0 ? (
+                              contactDiscovery.data.candidates.map((p, i) => (
                                 <div
                                   key={i}
                                   className="flex flex-col gap-1 rounded bg-secondary/30 p-2 text-xs"
                                 >
                                   <div className="flex items-center justify-between">
-                                    <span className="font-medium capitalize">{p.platform}</span>
-                                    <span
-                                      className={
-                                        p.confidence > 80 ? "text-success" : "text-warning"
-                                      }
-                                    >
-                                      {p.confidence > 80 ? "Verified Candidate" : "Possible Match"}{" "}
-                                      ({p.confidence}%)
+                                    <span className="font-medium capitalize">
+                                      {p.platform.replace("_", " ")}
                                     </span>
                                   </div>
-                                  {p.url && p.url !== "#" ? (
+                                  <p className="font-semibold line-clamp-1" title={p.title}>
+                                    {p.title}
+                                  </p>
+                                  {p.href && p.href !== "#" ? (
                                     <a
-                                      href={p.url}
+                                      href={p.href}
                                       target="_blank"
                                       rel="noreferrer"
                                       className="text-muted-foreground hover:underline truncate"
                                     >
-                                      @{p.username || "Profile"}
+                                      {p.username ? `@${p.username}` : p.href}
                                     </a>
                                   ) : (
                                     <span className="text-muted-foreground truncate">
-                                      @{p.username || "Unknown ID"}
+                                      {p.username ? `@${p.username}` : "Unknown ID"}
                                     </span>
                                   )}
                                 </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <p className="text-xs text-muted-foreground italic">
-                              No public profiles found.
-                            </p>
-                          )}
-
-                          {socialIntel.data.recommended_platform && (
-                            <div className="rounded border border-primary/20 bg-primary/5 p-2">
-                              <p className="text-[10px] uppercase text-muted-foreground font-semibold">
-                                Recommended Channel
+                              ))
+                            ) : (
+                              <p className="text-xs text-muted-foreground italic">
+                                No public contact profiles found.
                               </p>
-                              <p className="text-xs font-medium capitalize mt-0.5">
-                                {socialIntel.data.recommended_platform}
-                              </p>
-                            </div>
-                          )}
+                            )}
+                          </div>
+                        ) : null}
+                      </div>
 
-                          {socialIntel.data.messages &&
-                            Object.entries(socialIntel.data.messages).length > 0 && (
+                      <div className="mt-4 border-t border-border pt-4">
+                        <p className="flex items-center gap-1.5 text-xs font-semibold">
+                          <Radar className="size-3.5 text-primary" /> Social Intelligence
+                        </p>
+
+                        {socialIntelLoading ? (
+                          <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                            <Loader2 className="size-3 animate-spin" /> Scanning social presence...
+                          </div>
+                        ) : socialIntel?.data ? (
+                          <div className="mt-3 space-y-3">
+                            {socialIntel.data.profiles?.length > 0 ? (
                               <div className="space-y-2">
+                                {socialIntel.data.profiles.map((p, i) => (
+                                  <div
+                                    key={i}
+                                    className="flex flex-col gap-1 rounded bg-secondary/30 p-2 text-xs"
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <span className="font-medium capitalize">{p.platform}</span>
+                                      <span
+                                        className={
+                                          p.confidence > 80 ? "text-success" : "text-warning"
+                                        }
+                                      >
+                                        {p.confidence > 80
+                                          ? "Verified Candidate"
+                                          : "Possible Match"}{" "}
+                                        ({p.confidence}%)
+                                      </span>
+                                    </div>
+                                    {p.url && p.url !== "#" ? (
+                                      <a
+                                        href={p.url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="text-muted-foreground hover:underline truncate"
+                                      >
+                                        @{p.username || "Profile"}
+                                      </a>
+                                    ) : (
+                                      <span className="text-muted-foreground truncate">
+                                        @{p.username || "Unknown ID"}
+                                      </span>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-xs text-muted-foreground italic">
+                                No public profiles found.
+                              </p>
+                            )}
+
+                            {socialIntel.data.recommended_platform && (
+                              <div className="rounded border border-primary/20 bg-primary/5 p-2">
                                 <p className="text-[10px] uppercase text-muted-foreground font-semibold">
-                                  Generated Outreach
+                                  Recommended Channel
                                 </p>
-                                {Object.entries(socialIntel.data.messages).map(
-                                  ([platform, msg], i) => (
-                                    <MessageCopyCard
-                                      key={i}
-                                      platform={platform}
-                                      message={msg as string}
-                                    />
-                                  ),
-                                )}
+                                <p className="text-xs font-medium capitalize mt-0.5">
+                                  {socialIntel.data.recommended_platform}
+                                </p>
                               </div>
                             )}
-                        </div>
-                      ) : (
-                        <p className="mt-2 text-xs text-muted-foreground">
-                          Waiting for analysis...
-                        </p>
-                      )}
-                    </div>
+
+                            {socialIntel.data.messages &&
+                              Object.entries(socialIntel.data.messages).length > 0 && (
+                                <div className="space-y-2">
+                                  <p className="text-[10px] uppercase text-muted-foreground font-semibold">
+                                    Generated Outreach
+                                  </p>
+                                  {Object.entries(socialIntel.data.messages).map(
+                                    ([platform, msg], i) => (
+                                      <MessageCopyCard
+                                        key={i}
+                                        platform={platform}
+                                        message={msg as string}
+                                      />
+                                    ),
+                                  )}
+                                </div>
+                              )}
+                          </div>
+                        ) : (
+                          <p className="mt-2 text-xs text-muted-foreground">
+                            Waiting for analysis...
+                          </p>
+                        )}
+                      </div>
+                    </>
                   )}
 
                   <div className="flex gap-2">
