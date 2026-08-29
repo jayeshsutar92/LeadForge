@@ -116,17 +116,17 @@ class ContactDiscoveryService:
             else:
                 c.status = "Low Confidence"
                 
-            # Keep highest score per platform
-            if c.platform not in best_by_platform or best_by_platform[c.platform].confidence < score:
-                best_by_platform[c.platform] = c
-                
-        # Only include the best candidate for each platform
-        final_candidates = list(best_by_platform.values())
-        final_candidates.sort(key=lambda x: x.confidence, reverse=True)
+        # Sort candidates by confidence
+        candidates.sort(key=lambda x: x.confidence, reverse=True)
         
-        recommended = final_candidates[0].platform if final_candidates and final_candidates[0].status == "Verified Candidate" else None
+        # Determine recommended platform from the best Verified Candidate
+        recommended = None
+        for c in candidates:
+            if c.status == "Verified Candidate":
+                recommended = c.platform
+                break
 
-        result_data = ContactDiscoveryResult(candidates=final_candidates, recommended_platform=recommended)
+        result_data = ContactDiscoveryResult(candidates=candidates, recommended_platform=recommended)
         
         discovery = ContactDiscovery(
             business_id=business.id,

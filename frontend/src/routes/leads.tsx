@@ -16,6 +16,12 @@ import {
   Check,
   Radar,
   Trash2,
+  Facebook,
+  Instagram,
+  Linkedin,
+  Twitter,
+  MapPin,
+  ExternalLink,
 } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell";
@@ -34,6 +40,7 @@ import {
   useSocialIntelligence,
   useContactDiscovery,
   useGenerateContactDiscovery,
+  type ContactDiscoveryCandidate,
 } from "@/lib/api-hooks";
 import {
   Select,
@@ -64,6 +71,134 @@ const filters: Array<{ key: LeadStatus | "all"; label: string }> = [
   { key: "negotiating", label: "Negotiating" },
   { key: "won", label: "Won" },
 ];
+
+function PlatformIcon({ platform, className }: { platform: string; className?: string }) {
+  switch (platform.toLowerCase()) {
+    case "facebook":
+      return <Facebook className={className} />;
+    case "instagram":
+      return <Instagram className={className} />;
+    case "linkedin":
+      return <Linkedin className={className} />;
+    case "x":
+    case "twitter":
+      return <Twitter className={className} />;
+    case "google_maps":
+      return <MapPin className={className} />;
+    default:
+      return <Globe className={className} />;
+  }
+}
+
+function ContactCandidateCard({
+  candidate,
+  isRecommended,
+}: {
+  candidate: ContactDiscoveryCandidate;
+  isRecommended: boolean;
+}) {
+  const [copiedUrl, setCopiedUrl] = useState(false);
+  const [copiedUser, setCopiedUser] = useState(false);
+
+  const copyToClipboard = (text: string, type: "url" | "user") => {
+    navigator.clipboard.writeText(text);
+    if (type === "url") {
+      setCopiedUrl(true);
+      setTimeout(() => setCopiedUrl(false), 2000);
+    } else {
+      setCopiedUser(true);
+      setTimeout(() => setCopiedUser(false), 2000);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-2 rounded-md border border-border bg-card p-3 shadow-sm relative">
+      {isRecommended && (
+        <div className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm flex items-center gap-1">
+          <Star className="size-3" fill="currentColor" /> Recommended
+        </div>
+      )}
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <div className="bg-primary/10 text-primary p-1.5 rounded-md">
+            <PlatformIcon platform={candidate.platform} className="size-4" />
+          </div>
+          <div className="min-w-0">
+            <span className="font-semibold text-sm capitalize leading-none truncate block">
+              {candidate.platform.replace("_", " ")}
+            </span>
+            <p
+              className="text-[10px] text-muted-foreground mt-0.5 font-medium line-clamp-1 break-all"
+              title={candidate.title}
+            >
+              {candidate.title}
+            </p>
+          </div>
+        </div>
+        <span
+          className={cn(
+            "text-[10px] font-semibold px-1.5 py-0.5 rounded whitespace-nowrap",
+            candidate.confidence >= 70
+              ? "bg-success/10 text-success"
+              : candidate.confidence >= 40
+                ? "bg-warning/10 text-warning"
+                : "bg-muted text-muted-foreground",
+          )}
+        >
+          {candidate.status} ({candidate.confidence}%)
+        </span>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-muted-foreground">
+        <div className="flex items-center gap-1 flex-1 min-w-[100px]">
+          <span className="font-medium truncate text-foreground">
+            {candidate.username ? `@${candidate.username}` : "Unknown User"}
+          </span>
+          {candidate.username && (
+            <button
+              onClick={() => copyToClipboard(candidate.username!, "user")}
+              className="hover:text-foreground hover:bg-muted p-1 rounded transition-colors"
+              title="Copy Username"
+            >
+              {copiedUser ? <Check className="size-3 text-success" /> : <Copy className="size-3" />}
+            </button>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1 flex-1 min-w-[100px] justify-end">
+          <a
+            href={candidate.href}
+            target="_blank"
+            rel="noreferrer"
+            className="hover:underline truncate text-primary inline-flex items-center gap-1 max-w-[120px]"
+          >
+            Open Profile <ExternalLink className="size-3 shrink-0" />
+          </a>
+          <button
+            onClick={() => copyToClipboard(candidate.href, "url")}
+            className="hover:text-foreground hover:bg-muted p-1 rounded transition-colors"
+            title="Copy URL"
+          >
+            {copiedUrl ? <Check className="size-3 text-success" /> : <Copy className="size-3" />}
+          </button>
+        </div>
+      </div>
+
+      {candidate.evidence && candidate.evidence.length > 0 && (
+        <div className="mt-1 flex flex-wrap gap-1">
+          {candidate.evidence.map((ev, idx) => (
+            <span
+              key={idx}
+              className="bg-secondary text-secondary-foreground text-[9px] px-1.5 py-0.5 rounded-sm"
+            >
+              {ev}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function LeadsPage() {
   const [filter, setFilter] = useState<LeadStatus | "all">("all");
@@ -431,72 +566,60 @@ function LeadsPage() {
                             <Loader2 className="size-3 animate-spin" /> Searching public profiles...
                           </div>
                         ) : contactDiscovery?.data ? (
-                          <div className="mt-3 space-y-3">
-                            {contactDiscovery.data.candidates?.length > 0 ? (
-                              <div className="space-y-2">
-                                {contactDiscovery.data.candidates.map((p, i) => (
-                                  <div
-                                    key={i}
-                                    className="flex flex-col gap-1.5 rounded bg-secondary/30 p-2 text-xs"
-                                  >
-                                    <div className="flex items-center justify-between">
-                                      <span className="font-medium capitalize">
-                                        {p.platform.replace("_", " ")}
-                                      </span>
-                                      <span
-                                        className={
-                                          p.confidence >= 70
-                                            ? "text-success font-semibold"
-                                            : p.confidence >= 40
-                                              ? "text-warning"
-                                              : "text-muted-foreground"
-                                        }
-                                      >
-                                        {p.status} ({p.confidence}%)
-                                      </span>
-                                    </div>
-                                    <p className="font-semibold line-clamp-1" title={p.title}>
-                                      {p.title}
-                                    </p>
-                                    {p.href && p.href !== "#" ? (
-                                      <a
-                                        href={p.href}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="text-muted-foreground hover:underline truncate"
-                                      >
-                                        {p.username ? `@${p.username}` : p.href}
-                                      </a>
-                                    ) : (
-                                      <span className="text-muted-foreground truncate">
-                                        {p.username ? `@${p.username}` : "Unknown ID"}
-                                      </span>
-                                    )}
-                                    {p.evidence && p.evidence.length > 0 && (
-                                      <p className="text-[10px] text-muted-foreground">
-                                        <span className="font-semibold">Evidence:</span>{" "}
-                                        {p.evidence.join(", ")}
-                                      </p>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <p className="text-xs text-muted-foreground italic">
-                                No public contact profiles found.
-                              </p>
-                            )}
+                          <div className="mt-3 space-y-4">
+                            {(() => {
+                              const verified = contactDiscovery.data.candidates.filter(
+                                (c) => c.confidence >= 70,
+                              );
+                              const possible = contactDiscovery.data.candidates.filter(
+                                (c) => c.confidence < 70,
+                              );
 
-                            {contactDiscovery.data.recommended_platform && (
-                              <div className="rounded border border-primary/20 bg-primary/5 p-2">
-                                <p className="text-[10px] uppercase text-primary font-semibold">
-                                  Recommended Outreach Platform
-                                </p>
-                                <p className="text-xs font-medium capitalize mt-0.5">
-                                  {contactDiscovery.data.recommended_platform.replace("_", " ")}
-                                </p>
-                              </div>
-                            )}
+                              if (verified.length === 0 && possible.length === 0) {
+                                return (
+                                  <p className="text-xs text-muted-foreground italic text-center py-4">
+                                    No public contact profiles found for this business.
+                                  </p>
+                                );
+                              }
+
+                              return (
+                                <>
+                                  {verified.length > 0 && (
+                                    <div className="space-y-2">
+                                      <p className="text-[10px] uppercase text-muted-foreground font-semibold">
+                                        Verified Profiles
+                                      </p>
+                                      {verified.map((p, i) => (
+                                        <ContactCandidateCard
+                                          key={i}
+                                          candidate={p}
+                                          isRecommended={
+                                            p.platform ===
+                                            contactDiscovery.data.recommended_platform
+                                          }
+                                        />
+                                      ))}
+                                    </div>
+                                  )}
+
+                                  {possible.length > 0 && (
+                                    <div className="space-y-2">
+                                      <p className="text-[10px] uppercase text-muted-foreground font-semibold">
+                                        Possible Matches
+                                      </p>
+                                      {possible.map((p, i) => (
+                                        <ContactCandidateCard
+                                          key={i}
+                                          candidate={p}
+                                          isRecommended={false}
+                                        />
+                                      ))}
+                                    </div>
+                                  )}
+                                </>
+                              );
+                            })()}
                           </div>
                         ) : null}
                       </div>
