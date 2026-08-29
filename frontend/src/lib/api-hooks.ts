@@ -376,15 +376,18 @@ export const useContactDiscovery = (slug: string | null) => {
     },
     enabled: !!slug,
     retry: false,
+    staleTime: 5 * 60 * 1000,
   });
 };
 
 export const useGenerateContactDiscovery = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ slug }: { slug: string }) => {
+    mutationFn: async ({ slug, force }: { slug: string; force?: boolean }) => {
       const res = await apiClient.post<ContactDiscoveryResponse>(
         `/businesses/${slug}/contact-discovery`,
+        null,
+        { params: { force } },
       );
       return res.data;
     },
@@ -399,9 +402,11 @@ export const useGenerateContactDiscovery = () => {
 export const useGenerateContactDiscoveryOutreach = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ slug }: { slug: string }) => {
+    mutationFn: async ({ slug, force }: { slug: string; force?: boolean }) => {
       const res = await apiClient.post<ContactDiscoveryResponse>(
         `/businesses/${slug}/contact-discovery/generate`,
+        null,
+        { params: { force } },
       );
       return res.data;
     },

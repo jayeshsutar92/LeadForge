@@ -233,7 +233,7 @@ function LeadsPage() {
   const handleGenerateContactDiscovery = async () => {
     if (!selectedBiz?.slug) return;
     try {
-      await generateContactDiscovery.mutateAsync({ slug: selectedBiz.slug });
+      await generateContactDiscovery.mutateAsync({ slug: selectedBiz.slug, force: true });
     } catch (e) {
       console.error(e);
     }
@@ -242,7 +242,7 @@ function LeadsPage() {
   const handleGenerateContactOutreach = async () => {
     if (!selectedBiz?.slug) return;
     try {
-      await generateContactOutreach.mutateAsync({ slug: selectedBiz.slug });
+      await generateContactOutreach.mutateAsync({ slug: selectedBiz.slug, force: true });
     } catch (e) {
       console.error(e);
     }
@@ -572,6 +572,12 @@ function LeadsPage() {
                           </Button>
                         </div>
 
+                        {generateContactDiscovery.isError && (
+                          <div className="mt-2 text-xs text-destructive bg-destructive/10 p-2 rounded">
+                            Failed to discover contacts. Please try again.
+                          </div>
+                        )}
+
                         {contactDiscoveryLoading ? (
                           <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
                             <Loader2 className="size-3 animate-spin" /> Searching public profiles...
@@ -654,6 +660,12 @@ function LeadsPage() {
                                           : "Generate Message"}
                                       </Button>
                                     </div>
+
+                                    {generateContactOutreach.isError && (
+                                      <div className="mb-2 text-xs text-destructive bg-destructive/10 p-2 rounded">
+                                        Failed to generate outreach messages. Please try again.
+                                      </div>
+                                    )}
 
                                     {contactDiscovery.data.messages &&
                                     Object.keys(contactDiscovery.data.messages).length > 0 ? (

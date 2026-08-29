@@ -641,6 +641,7 @@ from app.schemas.contact_discovery import ContactDiscoveryResponse
 @router.post("/{slug}/contact-discovery", response_model=ContactDiscoveryResponse)
 async def generate_contact_discovery(
     slug: str,
+    force: bool = False,
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
 ):
@@ -652,7 +653,7 @@ async def generate_contact_discovery(
     if business.website:
         raise HTTPException(status_code=400, detail="Contact discovery is only for businesses without a website")
         
-    return await ContactDiscoveryService.discover_contacts(session, business)
+    return await ContactDiscoveryService.discover_contacts(session, business, force=force)
 
 @router.get("/{slug}/contact-discovery", response_model=ContactDiscoveryResponse)
 async def get_contact_discovery(
@@ -674,6 +675,7 @@ async def get_contact_discovery(
 @router.post("/{slug}/contact-discovery/generate", response_model=ContactDiscoveryResponse)
 async def generate_contact_outreach_endpoint(
     slug: str,
+    force: bool = False,
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
 ):
@@ -695,6 +697,6 @@ async def generate_contact_outreach_endpoint(
             break
             
     try:
-        return await ContactDiscoveryService.generate_outreach(session, business, phone)
+        return await ContactDiscoveryService.generate_outreach(session, business, phone, force=force)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

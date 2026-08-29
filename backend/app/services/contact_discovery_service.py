@@ -12,10 +12,17 @@ logger = logging.getLogger(__name__)
 
 class ContactDiscoveryService:
     @staticmethod
-    async def discover_contacts(session: AsyncSession, business: Business) -> ContactDiscoveryResponse:
+    async def discover_contacts(session: AsyncSession, business: Business, force: bool = False) -> ContactDiscoveryResponse:
         """
         Discover public contact channels for a business using DDGS.
         """
+        existing_record = await ContactDiscoveryService.get_latest_discovery(session, business.id)
+        
+        if not force and existing_record:
+            logger.info(f"Returning cached Contact Discovery for {business.name}")
+            return existing_record
+                
+        logger.info(f"Starting Contact Discovery for {business.name}")
         platforms = [
             ("instagram", "site:instagram.com"),
             ("facebook", "site:facebook.com"),
@@ -28,45 +35,51 @@ class ContactDiscoveryService:
         try:
             ddgs = DDGS()
             for platform_name, search_prefix in platforms:
-                query = f'{search_prefix} "{business.name}" "{business.city}"'
-                results = ddgs.text(query, max_results=3)
-                if results:
-                    for r in results:
-                        href = r.get("href", "")
-                        # Try to extract a simple username heuristic from URL
-                        username = None
-                        if platform_name == "instagram" and "instagram.com/" in href:
-                            parts = href.split("instagram.com/")
-                            if len(parts) > 1:
-                                username = parts[1].strip("/").split("/")[0].split("?")[0]
-                        elif platform_name == "x" and ("x.com/" in href or "twitter.com/" in href):
-                            if "x.com/" in href:
-                                parts = href.split("x.com/")
-                            else:
-                                parts = href.split("twitter.com/")
-                            if len(parts) > 1:
-                                username = parts[1].strip("/").split("/")[0].split("?")[0]
+                try:
+                    query = f'{search_prefix} "{business.name}" "{business.city}"'
+                    results = ddgs.text(query, max_results=3)
+                    if results:
+                        for r in results:
+                            href = r.get("href", "")
+                            # Try to extract a simple username heuristic from URL
+                            username = None
+                            if platform_name == "instagram" and "instagram.com/" in href:
+                                parts = href.split("instagram.com/")
+                                if len(parts) > 1:
+                                    username = parts[1].strip("/").split("/")[0].split("?")[0]
+                            elif platform_name == "x" and ("x.com/" in href or "twitter.com/" in href):
+                                if "x.com/" in href:
+                                    parts = href.split("x.com/")
+                                else:
+                                    parts = href.split("twitter.com/")
+                                if len(parts) > 1:
+                                    username = parts[1].strip("/").split("/")[0].split("?")[0]
 
-                        candidates.append(ContactDiscoveryCandidate(
-                            platform=platform_name,
-                            title=r.get("title", ""),
-                            href=href,
-                            username=username,
-                            body=r.get("body", "")
-                        ))
+                            candidates.append(ContactDiscoveryCandidate(
+                                platform=platform_name,
+                                title=r.get("title", ""),
+                                href=href,
+                                username=username,
+                                body=r.get("body", "")
+                            ))
+                except Exception as e:
+                    logger.warning(f"Contact discovery search failed for {platform_name} on {business.name}: {e}")
             
             # Google Maps search
-            gmaps_query = f'"{business.name}" "{business.city}" Google Maps'
-            gmaps_results = ddgs.text(gmaps_query, max_results=2)
-            if gmaps_results:
-                for r in gmaps_results:
-                    candidates.append(ContactDiscoveryCandidate(
-                        platform="google_maps",
-                        title=r.get("title", ""),
-                        href=r.get("href", ""),
-                        username=None,
-                        body=r.get("body", "")
-                    ))
+            try:
+                gmaps_query = f'"{business.name}" "{business.city}" Google Maps'
+                gmaps_results = ddgs.text(gmaps_query, max_results=2)
+                if gmaps_results:
+                    for r in gmaps_results:
+                        candidates.append(ContactDiscoveryCandidate(
+                            platform="google_maps",
+                            title=r.get("title", ""),
+                            href=r.get("href", ""),
+                            username=None,
+                            body=r.get("body", "")
+                        ))
+            except Exception as e:
+                logger.warning(f"Contact discovery search failed for google_maps on {business.name}: {e}")
                     
         except Exception as e:
             logger.error(f"Contact discovery search failed for {business.slug}: {e}")
@@ -119,14 +132,24 @@ class ContactDiscoveryService:
         # Sort candidates by confidence
         candidates.sort(key=lambda x: x.confidence, reverse=True)
         
+        # If discovery failed entirely, but we have an old record, preserve it
+        if not candidates and existing_record:
+            logger.warning(f"Contact discovery yielded no candidates, preserving previous record for {business.name}")
+            return existing_record
+        
         # Determine recommended platform from the best Verified Candidate
         recommended = None
         for c in candidates:
             if c.status == "Verified Candidate":
                 recommended = c.platform
                 break
+                
+        # Preserve old messages if we had any
+        messages = {}
+        if existing_record and existing_record.data.messages:
+            messages = existing_record.data.messages
 
-        result_data = ContactDiscoveryResult(candidates=candidates, recommended_platform=recommended)
+        result_data = ContactDiscoveryResult(candidates=candidates, recommended_platform=recommended, messages=messages)
         
         discovery = ContactDiscovery(
             business_id=business.id,
@@ -153,13 +176,17 @@ class ContactDiscoveryService:
         return None
 
     @staticmethod
-    async def generate_outreach(session: AsyncSession, business: Business, phone: str = "") -> ContactDiscoveryResponse:
+    async def generate_outreach(session: AsyncSession, business: Business, phone: str = "", force: bool = False) -> ContactDiscoveryResponse:
         from app.services.analysis.contact_outreach_agent import generate_contact_outreach
         
         # Get existing discovery
         discovery = await ContactDiscoveryService.get_latest_discovery(session, business.id)
         if not discovery:
             raise ValueError("Contact discovery must be performed before generating outreach.")
+            
+        if not force and discovery.data.messages and len(discovery.data.messages) > 0:
+            logger.info(f"Returning cached outreach messages for {business.name}")
+            return discovery
             
         verified_platforms = [
             c.model_dump() for c in discovery.data.candidates if c.status == "Verified Candidate"
@@ -178,6 +205,11 @@ class ContactDiscoveryService:
         )
 
         messages = result.get("messages", {})
+        
+        # If generation failed or returned nothing, and we already have messages, do not overwrite
+        if not messages and discovery.data.messages:
+            logger.warning(f"AI generation returned no messages for {business.name}, keeping existing messages.")
+            return discovery
         
         # Update the database record
         stmt = select(ContactDiscovery).where(ContactDiscovery.id == discovery.id)
