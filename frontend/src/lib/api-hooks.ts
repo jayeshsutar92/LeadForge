@@ -47,6 +47,8 @@ export interface ContactDiscoveryCandidate {
   title: string;
   href: string;
   username?: string;
+  display_name?: string;
+  bio?: string;
   body: string;
   confidence: number;
   status: string;

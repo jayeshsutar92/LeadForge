@@ -130,9 +130,9 @@ function ContactCandidateCard({
             </span>
             <p
               className="text-[10px] text-muted-foreground mt-0.5 font-medium line-clamp-1 break-all"
-              title={candidate.title}
+              title={candidate.display_name || candidate.title}
             >
-              {candidate.title}
+              {candidate.display_name || candidate.title}
             </p>
           </div>
         </div>
@@ -186,16 +186,22 @@ function ContactCandidateCard({
       </div>
 
       {candidate.evidence && candidate.evidence.length > 0 && (
-        <div className="mt-1 flex flex-wrap gap-1">
-          {candidate.evidence.map((ev, idx) => (
-            <span
-              key={idx}
-              className="bg-secondary text-secondary-foreground text-[9px] px-1.5 py-0.5 rounded-sm"
-            >
-              {ev}
-            </span>
-          ))}
-        </div>
+        <details className="mt-2 group">
+          <summary className="text-[10px] uppercase text-muted-foreground font-semibold cursor-pointer select-none flex items-center gap-1 hover:text-foreground transition-colors">
+            <span className="group-open:rotate-90 transition-transform text-[8px]">▶</span>
+            Verification Evidence
+          </summary>
+          <div className="mt-1.5 flex flex-col gap-1 pl-3 border-l-2 border-border ml-1 py-1">
+            {candidate.evidence.map((ev, idx) => (
+              <span
+                key={idx}
+                className="text-[10px] text-muted-foreground flex items-center gap-1.5"
+              >
+                <Check className="size-3 text-success" /> {ev}
+              </span>
+            ))}
+          </div>
+        </details>
       )}
     </div>
   );

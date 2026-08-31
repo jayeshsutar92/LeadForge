@@ -1,5 +1,8 @@
 import logging
 import uuid
+import re
+import asyncio
+import httpx
 from duckduckgo_search import DDGS
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -11,6 +14,37 @@ from app.schemas.contact_discovery import ContactDiscoveryCandidate, ContactDisc
 logger = logging.getLogger(__name__)
 
 class ContactDiscoveryService:
+    @staticmethod
+    async def fetch_profile_metadata(url: str) -> dict:
+        metadata = {}
+        try:
+            async with httpx.AsyncClient(timeout=3.0, follow_redirects=True, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"}) as client:
+                res = await client.get(url)
+                if res.status_code == 200:
+                    text = res.text
+                    
+                    # extract title
+                    og_title = re.search(r'<meta\s+(?:property|name)=["\']og:title["\']\s+content=["\']([^"\']+)["\']', text, re.IGNORECASE)
+                    if og_title:
+                        metadata['display_name'] = og_title.group(1)
+                    else:
+                        title = re.search(r'<title>([^<]+)</title>', text, re.IGNORECASE)
+                        if title:
+                            metadata['display_name'] = title.group(1)
+                            
+                    # extract description/bio
+                    og_desc = re.search(r'<meta\s+(?:property|name)=["\']og:description["\']\s+content=["\']([^"\']+)["\']', text, re.IGNORECASE)
+                    if og_desc:
+                        metadata['bio'] = og_desc.group(1)
+                    else:
+                        meta_desc = re.search(r'<meta\s+(?:property|name)=["\']description["\']\s+content=["\']([^"\']+)["\']', text, re.IGNORECASE)
+                        if meta_desc:
+                            metadata['bio'] = meta_desc.group(1)
+        except Exception as e:
+            logger.debug(f"Failed to fetch profile metadata for {url}: {e}")
+            
+        return metadata
+
     @staticmethod
     async def discover_contacts(session: AsyncSession, business: Business, force: bool = False) -> ContactDiscoveryResponse:
         """
@@ -111,13 +145,24 @@ class ContactDiscoveryService:
             logger.error(f"Contact discovery search failed for {business.slug}: {e}")
             pass
 
+        # Fetch metadata for candidates concurrently
+        async def enrich_candidate(c: ContactDiscoveryCandidate):
+            if c.platform != "google_maps":
+                meta = await ContactDiscoveryService.fetch_profile_metadata(c.href)
+                if meta:
+                    c.display_name = meta.get('display_name')
+                    c.bio = meta.get('bio')
+            return c
+            
+        candidates = await asyncio.gather(*(enrich_candidate(c) for c in candidates))
+
         # Verification and scoring
         verified_candidates = []
         best_by_platform = {}
         for c in candidates:
             score = 0
             evidence = []
-            content = f"{c.title} {c.body}".lower()
+            content = f"{c.title} {c.body} {c.display_name or ''} {c.bio or ''}".lower()
             
             # Name match
             if business.name and business.name.lower() in content:
@@ -149,11 +194,11 @@ class ContactDiscoveryService:
             c.evidence = evidence
             
             if score >= 70:
-                c.status = "Verified Candidate"
+                c.status = "Verified"
             elif score >= 40:
                 c.status = "Possible Match"
             else:
-                c.status = "Low Confidence"
+                c.status = "Rejected"
                 
         # Geographic Search Intelligence prioritization
         def get_geo_priority(c):
@@ -186,7 +231,7 @@ class ContactDiscoveryService:
         # Determine recommended platform from the best Verified Candidate
         recommended = None
         for c in candidates:
-            if c.status == "Verified Candidate":
+            if c.status == "Verified":
                 recommended = c.platform
                 break
                 

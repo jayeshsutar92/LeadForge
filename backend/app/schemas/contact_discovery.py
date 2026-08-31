@@ -11,9 +11,11 @@ class ContactDiscoveryCandidate(BaseModel):
     title: str
     href: str
     username: str | None = None
+    display_name: str | None = None
+    bio: str | None = None
     body: str
     confidence: int = 0
-    status: str = "Low Confidence"  # "Verified Candidate", "Possible Match", "Low Confidence"
+    status: str = "Rejected"  # "Verified", "Possible Match", "Rejected"
     evidence: list[str] = []
 
 
