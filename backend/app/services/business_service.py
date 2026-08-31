@@ -100,10 +100,62 @@ class BusinessService:
         return len(cards), cards
 
     async def create_business(self, data: BusinessCreate, user_id: UUID) -> BusinessCard:
-        # Check if it already exists
+        # Check if it already exists by slug (exact match)
         existing = await self.business_repo.get_by_slug(data.slug, user_id)
         if existing:
             return self._to_card(existing)
+            
+        # Canonical Resolution: Check if it already exists by deterministic matching
+        candidates = await self.business_repo.find_potential_matches(data.name, user_id)
+        if candidates:
+            def canonical_score(b: Business) -> int:
+                score = 0
+                b_name = b.name.lower()
+                d_name = data.name.lower()
+                if b_name == d_name:
+                    score += 50
+                elif b_name in d_name or d_name in b_name:
+                    score += 25
+                    
+                if not score:
+                    return 0
+                    
+                if b.city and data.city:
+                    if b.city.lower() != data.city.lower():
+                        return 0 # Different city = different business
+                    else:
+                        score += 30
+                        
+                if b.country and data.country:
+                    if b.country.lower() != data.country.lower():
+                        return 0
+                    else:
+                        score += 10
+                        
+                return score
+                
+            scored = [(b, canonical_score(b)) for b in candidates]
+            scored.sort(key=lambda x: x[1], reverse=True)
+            best_candidate, best_score = scored[0] if scored else (None, 0)
+            
+            if best_candidate and best_score >= 50:
+                # Update missing metadata on the canonical record
+                updates = False
+                if data.website and not best_candidate.website:
+                    best_candidate.website = data.website
+                    updates = True
+                if data.category and not best_candidate.category:
+                    best_candidate.category = data.category
+                    updates = True
+                if data.bio and not best_candidate.bio:
+                    best_candidate.bio = data.bio
+                    updates = True
+                    
+                if updates:
+                    await self.session.commit()
+                    
+                return self._to_card(best_candidate)
+                
         # Convert schema to model
         business = Business(**data.dict(), user_id=user_id)
         created = await self.business_repo.create(business)

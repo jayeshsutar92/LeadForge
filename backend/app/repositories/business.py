@@ -23,6 +23,29 @@ class BusinessRepository:
         )
         return result.scalar_one_or_none()
 
+    async def find_potential_matches(self, name: str, user_id: UUID) -> list[Business]:
+        # Find businesses with similar names to check for canonical matches
+        # We'll fetch exact matches or cases where the lowercased names are contained within each other
+        # For simplicity and performance, we pull exact name matches or startswith, 
+        # but to be safer against "The X" vs "X", we can pull businesses where 
+        # at least one significant word matches.
+        words = [w.lower() for w in name.split() if len(w) > 3]
+        if not words:
+            # Fallback for very short names
+            statement = select(Business).where(
+                Business.user_id == user_id,
+                func.lower(Business.name) == name.lower()
+            )
+        else:
+            conditions = [func.lower(Business.name).like(f"%{w}%") for w in words]
+            statement = select(Business).where(
+                Business.user_id == user_id,
+                or_(*conditions)
+            )
+            
+        result = await self.session.execute(statement)
+        return list(result.scalars().all())
+
     async def list(
         self,
         user_id: UUID,

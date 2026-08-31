@@ -122,7 +122,9 @@ async def discover_businesses(
             
             existing = await biz_service.business_repo.get_by_slug(slug, user.id)
             if existing:
-                discovered_cards.append(biz_service._to_card(existing))
+                card = biz_service._to_card(existing)
+                if not any(c.id == card.id for c in discovered_cards):
+                    discovered_cards.append(card)
                 continue
                 
             extratags = place.get("extratags") or {}
@@ -143,6 +145,9 @@ async def discover_businesses(
             )
             
             biz = await biz_service.create_business(biz_create, user.id)
+            if any(c.id == biz.id for c in discovered_cards):
+                continue
+                
             discovered_cards.append(biz)
             
             lead_create = LeadCreate(
