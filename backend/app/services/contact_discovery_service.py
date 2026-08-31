@@ -32,11 +32,37 @@ class ContactDiscoveryService:
         
         candidates = []
         
+        location_parts = []
+        if business.city:
+            location_parts.append(f'"{business.city}"')
+        
+        state = getattr(business, "state", None)
+        if state:
+            location_parts.append(f'"{state}"')
+            
+        if business.country and business.country.lower() not in ["unknown", ""]:
+            location_parts.append(f'"{business.country}"')
+            
+        postal_code = getattr(business, "postal_code", None)
+        if postal_code:
+            location_parts.append(f'"{postal_code}"')
+            
+        address = getattr(business, "address", None)
+        if address:
+            location_parts.append(f'"{address}"')
+            
+        coordinates = getattr(business, "coordinates", None)
+        if coordinates:
+            location_parts.append(f'"{coordinates}"')
+            
+        location_query = " ".join(location_parts)
+        category_query = f'"{business.category}"' if business.category else ""
+        
         try:
             ddgs = DDGS()
             for platform_name, search_prefix in platforms:
                 try:
-                    query = f'{search_prefix} "{business.name}" "{business.city}"'
+                    query = f'{search_prefix} "{business.name}" {location_query} {category_query}'.strip()
                     results = ddgs.text(query, max_results=3)
                     if results:
                         for r in results:
@@ -67,7 +93,7 @@ class ContactDiscoveryService:
             
             # Google Maps search
             try:
-                gmaps_query = f'"{business.name}" "{business.city}" Google Maps'
+                gmaps_query = f'"{business.name}" {location_query} Google Maps'.strip()
                 gmaps_results = ddgs.text(gmaps_query, max_results=2)
                 if gmaps_results:
                     for r in gmaps_results:
@@ -129,8 +155,28 @@ class ContactDiscoveryService:
             else:
                 c.status = "Low Confidence"
                 
-        # Sort candidates by confidence
-        candidates.sort(key=lambda x: x.confidence, reverse=True)
+        # Geographic Search Intelligence prioritization
+        def get_geo_priority(c):
+            content = f"{c.title} {c.body}".lower()
+            if business.city and business.city.lower() in content: return 4
+            if getattr(business, "address", None) and business.address.split(',')[0].lower() in content: return 3
+            if getattr(business, "state", None) and business.state.lower() in content: return 2
+            if business.country and business.country.lower() not in ["unknown", ""] and business.country.lower() in content: return 1
+            return 0
+            
+        filtered_candidates = []
+        for c in candidates:
+            # If candidate does not match the geographic context, filter it out
+            geo_priority = get_geo_priority(c)
+            if geo_priority == 0:
+                continue
+                
+            filtered_candidates.append(c)
+            
+        candidates = filtered_candidates
+                
+        # Sort candidates by geographic priority, then confidence
+        candidates.sort(key=lambda x: (get_geo_priority(x), x.confidence), reverse=True)
         
         # If discovery failed entirely, but we have an old record, preserve it
         if not candidates and existing_record:
