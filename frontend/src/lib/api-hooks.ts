@@ -394,9 +394,7 @@ export const useGenerateContactDiscovery = () => {
       return res.data;
     },
     onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["businesses", variables.slug, "contact-discovery"],
-      });
+      queryClient.setQueryData(["businesses", variables.slug, "contact-discovery"], data);
     },
   });
 };
@@ -413,9 +411,7 @@ export const useGenerateContactDiscoveryOutreach = () => {
       return res.data;
     },
     onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["businesses", variables.slug, "contact-discovery"],
-      });
+      queryClient.setQueryData(["businesses", variables.slug, "contact-discovery"], data);
     },
   });
 };
