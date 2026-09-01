@@ -21,5 +21,8 @@ class DiscoverySession(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         nullable=False,
     )
     query: Mapped[str] = mapped_column(String(255), nullable=False)
-    region: Mapped[str] = mapped_column(String(255), nullable=False)
+    region: Mapped[str] = mapped_column(String(255), nullable=False) # Keep for backward compatibility/display
+    country: Mapped[str] = mapped_column(String(255), nullable=True)
+    state: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    city: Mapped[str] = mapped_column(String(255), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

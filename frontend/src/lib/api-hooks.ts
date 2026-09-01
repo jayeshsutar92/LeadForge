@@ -91,7 +91,7 @@ export const useBusinessStats = () => {
 export const useDiscoverBusinesses = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (data: { query: string; region: string }) => {
+    mutationFn: async (data: { query: string; country: string; state?: string | undefined; city: string }) => {
       const res = await apiClient.post("/businesses/discover", data);
       return res.data;
     },

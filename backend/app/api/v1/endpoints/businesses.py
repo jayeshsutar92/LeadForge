@@ -36,7 +36,9 @@ logger = logging.getLogger(__name__)
 
 class DiscoverRequest(BaseModel):
     query: str
-    region: str
+    country: str
+    state: Optional[str] = None
+    city: str
 
 class DiscoverResponse(BaseModel):
     message: str
@@ -89,9 +91,25 @@ async def discover_businesses(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
 ):
-    # Normalize query and region
+    # Normalize query and geographic fields
     query_normalized = payload.query.strip().lower()
-    region_normalized = payload.region.strip().lower()
+    
+    country = payload.country.strip()
+    country_lower = country.lower()
+    if country_lower in ["us", "usa", "united states of america"]:
+        country = "United States"
+    elif country_lower in ["uk", "gb", "great britain"]:
+        country = "United Kingdom"
+        
+    state = payload.state.strip() if payload.state else ""
+    city = payload.city.strip()
+    
+    region_parts = [city]
+    if state:
+        region_parts.append(state)
+    region_parts.append(country)
+    region_normalized = ", ".join(region_parts)
+    
     query_str = quote_plus(f"{query_normalized} {region_normalized}")
     url = f"https://nominatim.openstreetmap.org/search?q={query_str}&format=json&extratags=1&addressdetails=1&limit=10"
     
@@ -125,7 +143,10 @@ async def discover_businesses(
     discovery_session = DiscoverySession(
         user_id=user.id,
         query=payload.query,
-        region=payload.region,
+        region=region_normalized,
+        country=country,
+        state=state if state else None,
+        city=city,
         is_active=True
     )
     session.add(discovery_session)
@@ -174,15 +195,15 @@ async def discover_businesses(
             address = place.get("address") or {}
             
             website = extratags.get("website") or extratags.get("contact:website") or extratags.get("url") or ""
-            city = address.get("city") or address.get("town") or address.get("village") or address.get("county") or payload.region
-            country = address.get("country", "Unknown")
+            city_extracted = address.get("city") or address.get("town") or address.get("village") or address.get("county") or city
+            country_extracted = address.get("country", country)
             
             biz_create = BusinessCreate(
                 name=name,
                 slug=slug,
                 category=query_normalized,
-                city=city,
-                country=country,
+                city=city_extracted,
+                country=country_extracted,
                 website=website,
                 bio=f"Discovered via OpenStreetMap. Category: {place.get('type', 'unknown')}"
             )
@@ -196,7 +217,7 @@ async def discover_businesses(
             lead_create = LeadCreate(
                 business_id=biz.id,
                 source="Discovery Scan",
-                notes=f"Discovered scanning for {payload.query} in {payload.region}"
+                notes=f"Discovered scanning for {payload.query} in {region_normalized}"
             )
             lead = await crm_service.create_lead(lead_create, current_user_id=user.id, session_id=active_session_id)
             # Regular BI analysis

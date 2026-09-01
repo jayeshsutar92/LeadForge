@@ -45,7 +45,9 @@ const criteria = [
 
 const scanSchema = z.object({
   query: z.string().min(3, "Business type must be at least 3 characters"),
-  region: z.string().min(2, "Region must be at least 2 characters"),
+  country: z.string().min(2, "Country is required"),
+  state: z.string().optional(),
+  city: z.string().min(2, "City/Region is required"),
 });
 
 type ScanFormValues = z.infer<typeof scanSchema>;
@@ -89,7 +91,9 @@ function Discover() {
     resolver: zodResolver(scanSchema),
     defaultValues: {
       query: "Dental practices",
-      region: "Portland, US",
+      country: "United States",
+      state: "Oregon",
+      city: "Portland",
     },
   });
 
@@ -105,7 +109,9 @@ function Discover() {
     try {
       const result = await discoverBusinesses.mutateAsync({
         query: data.query,
-        region: data.region,
+        country: data.country,
+        state: data.state,
+        city: data.city,
       });
 
       setScanState((prev) => ({
@@ -222,29 +228,70 @@ function Discover() {
                     </p>
                   )}
                 </div>
-                <div className="space-y-1.5">
-                  <Label
-                    htmlFor="scan-region"
-                    className={`text-xs ${errors.region ? "text-destructive" : ""}`}
-                  >
-                    Region
-                  </Label>
-                  <div className="relative">
-                    <MapPin className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="space-y-1.5">
+                    <Label
+                      htmlFor="scan-country"
+                      className={`text-xs ${errors.country ? "text-destructive" : ""}`}
+                    >
+                      Country *
+                    </Label>
                     <Input
-                      id="scan-region"
-                      {...register("region")}
+                      id="scan-country"
+                      {...register("country")}
                       disabled={isSubmitting || scanState.active}
-                      className={`h-10 pl-9 ${errors.region ? "border-destructive focus-visible:ring-destructive" : ""}`}
-                      aria-invalid={!!errors.region}
-                      placeholder="e.g. Portland, US or London, UK"
+                      className={`h-10 ${errors.country ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                      aria-invalid={!!errors.country}
+                      placeholder="e.g. US"
                     />
+                    {errors.country && (
+                      <p className="text-[11px] font-medium text-destructive">
+                        {errors.country.message}
+                      </p>
+                    )}
                   </div>
-                  {errors.region && (
-                    <p className="text-[11px] font-medium text-destructive">
-                      {errors.region.message}
-                    </p>
-                  )}
+                  <div className="space-y-1.5">
+                    <Label
+                      htmlFor="scan-state"
+                      className={`text-xs ${errors.state ? "text-destructive" : ""}`}
+                    >
+                      State
+                    </Label>
+                    <Input
+                      id="scan-state"
+                      {...register("state")}
+                      disabled={isSubmitting || scanState.active}
+                      className={`h-10 ${errors.state ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                      aria-invalid={!!errors.state}
+                      placeholder="e.g. OR"
+                    />
+                    {errors.state && (
+                      <p className="text-[11px] font-medium text-destructive">
+                        {errors.state.message}
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label
+                      htmlFor="scan-city"
+                      className={`text-xs ${errors.city ? "text-destructive" : ""}`}
+                    >
+                      City *
+                    </Label>
+                    <Input
+                      id="scan-city"
+                      {...register("city")}
+                      disabled={isSubmitting || scanState.active}
+                      className={`h-10 ${errors.city ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                      aria-invalid={!!errors.city}
+                      placeholder="e.g. Portland"
+                    />
+                    {errors.city && (
+                      <p className="text-[11px] font-medium text-destructive">
+                        {errors.city.message}
+                      </p>
+                    )}
+                  </div>
                 </div>
                 <Button
                   size="lg"
