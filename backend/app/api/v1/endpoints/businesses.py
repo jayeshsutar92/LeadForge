@@ -62,6 +62,10 @@ async def list_businesses(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
 ):
+    from app.services.discovery_session_service import DiscoverySessionService
+    active_session = await DiscoverySessionService(session).get_active_session(user.id)
+    active_session_id = str(active_session.id) if active_session else None
+
     service = BusinessService(session)
     total, cards = await service.list_businesses(
         q=q,
@@ -73,6 +77,7 @@ async def list_businesses(
         sort=sort,
         limit=limit,
         user_id=user.id,
+        session_id=active_session_id,
     )
     return BusinessListResponse(total=total, results=cards)
 
@@ -108,6 +113,26 @@ async def discover_businesses(
     crm_service = CRMService(session)
     bi_service = BusinessIntelligenceService(session)
     
+    # ─── Create Discovery Session ───────────────────────────────────────────────
+    from app.models.discovery_session import DiscoverySession
+    from sqlalchemy import update
+    
+    # Deactivate previous sessions
+    stmt = update(DiscoverySession).where(DiscoverySession.user_id == user.id).values(is_active=False)
+    await session.execute(stmt)
+    
+    # Create new session
+    discovery_session = DiscoverySession(
+        user_id=user.id,
+        query=payload.query,
+        region=payload.region,
+        is_active=True
+    )
+    session.add(discovery_session)
+    await session.flush()
+    active_session_id = str(discovery_session.id)
+    # ────────────────────────────────────────────────────────────────────────────
+
     new_leads = 0
     failed_imports = 0
     discovered_cards = []
@@ -122,6 +147,23 @@ async def discover_businesses(
             
             existing = await biz_service.business_repo.get_by_slug(slug, user.id)
             if existing:
+                # Add current session to existing business
+                if active_session_id not in existing.discovery_session_ids:
+                    session_ids = list(existing.discovery_session_ids)
+                    session_ids.append(active_session_id)
+                    existing.discovery_session_ids = session_ids
+                    session.add(existing)
+                    
+                # Add current session to existing lead
+                existing_lead = await crm_service.repo.get_lead_by_business_user(existing.id, user.id)
+                if existing_lead and active_session_id not in existing_lead.discovery_session_ids:
+                    lead_session_ids = list(existing_lead.discovery_session_ids)
+                    lead_session_ids.append(active_session_id)
+                    existing_lead.discovery_session_ids = lead_session_ids
+                    session.add(existing_lead)
+                    
+                await session.flush()
+
                 card = biz_service._to_card(existing)
                 if not any(c.id == card.id for c in discovered_cards):
                     discovered_cards.append(card)
@@ -145,6 +187,8 @@ async def discover_businesses(
             )
             
             biz = await biz_service.create_business(biz_create, user.id)
+            biz.discovery_session_ids = [active_session_id]
+            session.add(biz)
             if any(c.id == biz.id for c in discovered_cards):
                 continue
                 
@@ -155,7 +199,10 @@ async def discover_businesses(
                 source="Discovery Scan",
                 notes=f"Discovered scanning for {payload.query} in {payload.region}"
             )
-            await crm_service.create_lead(lead_create, current_user_id=user.id)
+            lead = await crm_service.create_lead(lead_create, current_user_id=user.id)
+            lead.discovery_session_ids = [active_session_id]
+            session.add(lead)
+            await session.flush()
             # Regular BI analysis
             try:
                 await bi_service.trigger_analysis(biz.slug, user.id)
@@ -542,8 +589,12 @@ async def delete_business(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
 ):
+    from app.services.discovery_session_service import DiscoverySessionService
+    active_session = await DiscoverySessionService(session).get_active_session(user.id)
+    active_session_id = str(active_session.id) if active_session else None
+
     service = BusinessService(session)
-    await service.delete_business(slug, user.id)
+    await service.delete_business(slug, user.id, session_id=active_session_id)
     return
 
 

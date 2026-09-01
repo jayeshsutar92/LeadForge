@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import Boolean, Float, Index, Integer, String, Text, ForeignKey
+from sqlalchemy import Boolean, Float, Index, Integer, String, Text, ForeignKey, JSON
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 import uuid
@@ -16,6 +16,8 @@ class Business(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         Index("ix_businesses_category", "category"),
         Index("ix_businesses_user_id", "user_id"),
     )
+
+    discovery_session_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
 
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),

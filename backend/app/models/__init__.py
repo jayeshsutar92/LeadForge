@@ -7,6 +7,7 @@ from .search_history import SearchHistory
 from .user import User
 from .lead import Lead, Activity
 from .social_intelligence import SocialIntelligence
+from .discovery_session import DiscoverySession
 
 __all__ = [
     "Business",
@@ -19,4 +20,5 @@ __all__ = [
     "Lead",
     "Activity",
     "SocialIntelligence",
+    "DiscoverySession",
 ]

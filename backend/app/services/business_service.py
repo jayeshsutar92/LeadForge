@@ -58,6 +58,7 @@ class BusinessService:
         limit: int = 60,
         offset: int = 0,
         user_id: UUID,
+        session_id: str | None = None,
     ) -> tuple[int, list[BusinessCard]]:
         businesses = await self.business_repo.list(
             user_id=user_id,
@@ -68,8 +69,10 @@ class BusinessService:
             min_followers=min_followers,
             limit=limit,
             offset=offset,
+            session_id=session_id,
         )
         
+        total = await self.business_repo.count_total(user_id, session_id=session_id)
         cards = [self._to_card(b) for b in businesses]
         
         if min_score > 0:
@@ -175,9 +178,21 @@ class BusinessService:
         updated = await self.business_repo.get_by_id(existing.id, user_id)
         return self._to_card(updated)
 
-    async def delete_business(self, slug: str, user_id: UUID) -> None:
+    async def delete_business(self, slug: str, user_id: UUID, session_id: str | None = None) -> None:
         existing = await self.business_repo.get_by_slug(slug, user_id)
         if not existing:
             from fastapi import HTTPException, status
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Business not found")
+        
+        if session_id and session_id in existing.discovery_session_ids:
+            session_ids = list(existing.discovery_session_ids)
+            session_ids.remove(session_id)
+            existing.discovery_session_ids = session_ids
+            self.session.add(existing)
+            await self.session.commit()
+            
+            # If the business still belongs to other sessions, do not delete it from DB
+            if len(session_ids) > 0:
+                return
+
         await self.business_repo.delete(existing.id, user_id)

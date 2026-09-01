@@ -50,10 +50,21 @@ class CRMRepository:
         await self.session.refresh(lead)
         return lead
 
-    async def delete_lead(self, lead_id: UUID, user_id: UUID) -> bool:
+    async def delete_lead(self, lead_id: UUID, user_id: UUID, session_id: str | None = None) -> bool:
         lead = await self.get_lead(lead_id, user_id)
         if not lead:
             return False
+            
+        if session_id and session_id in lead.discovery_session_ids:
+            session_ids = list(lead.discovery_session_ids)
+            session_ids.remove(session_id)
+            lead.discovery_session_ids = session_ids
+            self.session.add(lead)
+            await self.session.commit()
+            
+            if len(session_ids) > 0:
+                return True
+                
         await self.session.delete(lead)
         await self.session.commit()
         return True
@@ -68,9 +79,15 @@ class CRMRepository:
         limit: int = 50,
         offset: int = 0,
         sort: str = "created_desc",
+        session_id: str | None = None,
     ) -> tuple[int, Sequence[Lead]]:
         stmt = select(Lead).where(Lead.user_id == user_id)
         count_stmt = select(func.count()).select_from(Lead).where(Lead.user_id == user_id)
+        
+        if session_id:
+            from sqlalchemy import cast, String
+            stmt = stmt.where(cast(Lead.discovery_session_ids, String).like(f"%{session_id}%"))
+            count_stmt = count_stmt.where(cast(Lead.discovery_session_ids, String).like(f"%{session_id}%"))
 
         # Filters
         if q:

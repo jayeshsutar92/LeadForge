@@ -119,6 +119,7 @@ class CRMService:
         limit: int = 50,
         offset: int = 0,
         sort: str = "created_desc",
+        session_id: str | None = None,
     ) -> tuple[int, list[Lead]]:
         return await self.repo.list_leads(
             user_id=user_id,
@@ -129,10 +130,11 @@ class CRMService:
             limit=limit,
             offset=offset,
             sort=sort,
+            session_id=session_id,
         )
 
-    async def delete_lead(self, lead_id: UUID, user_id: UUID) -> None:
-        deleted = await self.repo.delete_lead(lead_id, user_id)
+    async def delete_lead(self, lead_id: UUID, user_id: UUID, session_id: str | None = None) -> None:
+        deleted = await self.repo.delete_lead(lead_id, user_id, session_id=session_id)
         if not deleted:
             raise HTTPException(status_code=404, detail="Lead not found")
         await self._invalidate_cache(lead_id)

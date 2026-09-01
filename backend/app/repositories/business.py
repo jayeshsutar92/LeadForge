@@ -57,6 +57,7 @@ class BusinessRepository:
         city: str | None = None,
         website_status: str | None = None,
         min_followers: int = 0,
+        session_id: str | None = None,
     ) -> list[Business]:
         statement = self._apply_filters(
             select(Business),
@@ -67,6 +68,9 @@ class BusinessRepository:
             min_followers=min_followers,
         )
         statement = statement.where(Business.user_id == user_id)
+        if session_id:
+            from sqlalchemy import cast, String
+            statement = statement.where(cast(Business.discovery_session_ids, String).like(f"%{session_id}%"))
         statement = statement.offset(offset).limit(limit)
         items_result = await self.session.execute(statement)
         return list(items_result.scalars().all())
@@ -76,8 +80,12 @@ class BusinessRepository:
         result = await self.session.execute(statement)
         return list(result.scalars().all())
         
-    async def count_total(self, user_id: UUID) -> int:
-        result = await self.session.execute(select(func.count()).select_from(Business).where(Business.user_id == user_id))
+    async def count_total(self, user_id: UUID, session_id: str | None = None) -> int:
+        stmt = select(func.count()).select_from(Business).where(Business.user_id == user_id)
+        if session_id:
+            from sqlalchemy import cast, String
+            stmt = stmt.where(cast(Business.discovery_session_ids, String).like(f"%{session_id}%"))
+        result = await self.session.execute(stmt)
         return result.scalar_one()
         
     async def count_missing_website(self, user_id: UUID) -> int:

@@ -42,6 +42,7 @@ class Lead(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     priority: Mapped[int] = mapped_column(Integer, nullable=False, default=3) # 1: High, 2: Medium, 3: Low
     source: Mapped[str] = mapped_column(String(100), nullable=False, default="system")
     tags: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    discovery_session_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
 
     next_follow_up: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_contacted: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

@@ -30,14 +30,23 @@ async def list_proposals(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
 ):
+    from app.services.discovery_session_service import DiscoverySessionService
+    active_session = await DiscoverySessionService(session).get_active_session(user.id)
+    active_session_id = str(active_session.id) if active_session else None
+
     stmt = (
         select(Proposal, Business.slug)
         .join(Opportunity, Proposal.opportunity_id == Opportunity.id)
         .join(BusinessIntelligence, Opportunity.business_intelligence_id == BusinessIntelligence.id)
         .join(Business, BusinessIntelligence.business_id == Business.id)
         .where(Business.user_id == user.id)
-        .order_by(Proposal.created_at.desc())
     )
+    
+    if active_session_id:
+        from sqlalchemy import cast, String
+        stmt = stmt.where(cast(Business.discovery_session_ids, String).like(f"%{active_session_id}%"))
+        
+    stmt = stmt.order_by(Proposal.created_at.desc())
     result = await session.execute(stmt)
     rows = result.all()
     
@@ -73,6 +82,10 @@ async def list_leads(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
 ):
+    from app.services.discovery_session_service import DiscoverySessionService
+    active_session = await DiscoverySessionService(session).get_active_session(user.id)
+    active_session_id = str(active_session.id) if active_session else None
+
     service = CRMService(session)
     total, leads = await service.list_leads(
         user_id=user.id,
@@ -83,6 +96,7 @@ async def list_leads(
         limit=limit,
         offset=offset,
         sort=sort,
+        session_id=active_session_id,
     )
     return LeadListResponse(total=total, results=leads)
 
@@ -133,8 +147,12 @@ async def delete_lead(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
 ):
+    from app.services.discovery_session_service import DiscoverySessionService
+    active_session = await DiscoverySessionService(session).get_active_session(user.id)
+    active_session_id = str(active_session.id) if active_session else None
+
     service = CRMService(session)
-    await service.delete_lead(lead_id, user.id)
+    await service.delete_lead(lead_id, user.id, session_id=active_session_id)
     return
 
 
