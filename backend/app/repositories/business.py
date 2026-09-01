@@ -23,6 +23,12 @@ class BusinessRepository:
         )
         return result.scalar_one_or_none()
 
+    async def get_by_website(self, website: str, user_id: UUID) -> Business | None:
+        result = await self.session.execute(
+            select(Business).where(Business.website == website, Business.user_id == user_id)
+        )
+        return result.scalar_one_or_none()
+
     async def find_potential_matches(self, name: str, user_id: UUID) -> list[Business]:
         # Find businesses with similar names to check for canonical matches
         # We'll fetch exact matches or cases where the lowercased names are contained within each other
