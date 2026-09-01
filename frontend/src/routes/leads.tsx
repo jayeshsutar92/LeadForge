@@ -12,6 +12,7 @@ import {
   Star,
   X,
   Loader2,
+  Copy,
   Check,
   Radar,
   RefreshCw,
@@ -43,6 +44,7 @@ import {
   useGenerateContactDiscovery,
   useGenerateContactDiscoveryOutreach,
   type ContactDiscoveryCandidate,
+  type SocialIntelligenceData,
 } from "@/lib/api-hooks";
 import {
   Select,
@@ -228,9 +230,10 @@ function LeadsPage() {
   );
 
   const selectedBiz = selectedLeadDetail?.business || null;
-  const { data: socialIntel, isLoading: socialIntelLoading } = useSocialIntelligence(
+  const { data: socialIntelData, isLoading: socialIntelLoading } = useSocialIntelligence(
     !selectedBiz?.website ? selectedBiz?.id : undefined,
   );
+  const socialIntel = socialIntelData as SocialIntelligenceData | undefined;
 
   const refreshSocialIntel = useRefreshSocialIntelligence();
 

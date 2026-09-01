@@ -316,9 +316,9 @@ export interface SocialIntelligenceData {
 }
 
 export function useSocialIntelligence(businessId: string | undefined) {
-  return useQuery<SocialIntelligenceData, Error>({
+  return useQuery({
     queryKey: ["socialIntelligence", businessId],
-    queryFn: async () => {
+    queryFn: async (): Promise<SocialIntelligenceData> => {
       const res = await apiClient.get(`/social-intelligence/${businessId}`);
       return res.data;
     },
