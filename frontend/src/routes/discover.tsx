@@ -98,13 +98,11 @@ function Discover() {
   });
 
   const onSubmit = async (data: ScanFormValues) => {
-    setScanState({
+    setScanState((prev) => ({
+      ...prev,
       active: true,
       message: "Querying external business database...",
-      found: 0,
-      processed: 0,
-      results: [],
-    });
+    }));
 
     try {
       const result = await discoverBusinesses.mutateAsync({
@@ -114,13 +112,16 @@ function Discover() {
         city: data.city,
       });
 
-      setScanState((prev) => ({
-        ...prev,
-        found: result.found,
-        processed: result.found, // all processed on backend
-        message: result.message,
-        results: result.results || [],
-      }));
+      setScanState((prev) => {
+        const isLocked = result.message?.includes("already running");
+        return {
+          ...prev,
+          found: isLocked ? prev.found : result.found,
+          processed: isLocked ? prev.processed : result.found,
+          message: result.message,
+          results: isLocked ? prev.results : result.results || [],
+        };
+      });
 
       toast.success("Scan completed successfully", {
         description: `Imported ${result.new_leads} new leads from ${result.found} found businesses.`,
