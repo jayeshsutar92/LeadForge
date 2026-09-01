@@ -326,6 +326,19 @@ export function useSocialIntelligence(businessId: string | undefined) {
   });
 }
 
+export function useRefreshSocialIntelligence() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (businessId: string) => {
+      const res = await apiClient.post(`/social-intelligence/${businessId}/refresh`);
+      return res.data;
+    },
+    onSuccess: (_, businessId) => {
+      queryClient.invalidateQueries({ queryKey: ["socialIntelligence", businessId] });
+    },
+  });
+}
+
 // --- Delete Hooks ---
 
 export const useDeleteBusiness = () => {

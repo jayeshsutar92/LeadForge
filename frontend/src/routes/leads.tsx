@@ -12,9 +12,9 @@ import {
   Star,
   X,
   Loader2,
-  Copy,
   Check,
   Radar,
+  RefreshCw,
   Trash2,
   Facebook,
   Instagram,
@@ -38,6 +38,7 @@ import {
   useUpdateLead,
   useDeleteLead,
   useSocialIntelligence,
+  useRefreshSocialIntelligence,
   useContactDiscovery,
   useGenerateContactDiscovery,
   useGenerateContactDiscoveryOutreach,
@@ -230,6 +231,9 @@ function LeadsPage() {
   const { data: socialIntel, isLoading: socialIntelLoading } = useSocialIntelligence(
     !selectedBiz?.website ? selectedBiz?.id : undefined,
   );
+  
+  const refreshSocialIntel = useRefreshSocialIntelligence();
+
   const { data: contactDiscovery, isLoading: contactDiscoveryLoading } = useContactDiscovery(
     !selectedBiz?.website ? selectedBiz?.slug : undefined,
   );
@@ -702,11 +706,27 @@ function LeadsPage() {
                       </div>
 
                       <div className="mt-4 border-t border-border pt-4">
-                        <p className="flex items-center gap-1.5 text-xs font-semibold">
-                          <Radar className="size-3.5 text-primary" /> Social Intelligence
-                        </p>
+                        <div className="flex items-center justify-between">
+                          <p className="flex items-center gap-1.5 text-xs font-semibold">
+                            <Radar className="size-3.5 text-primary" /> Social Intelligence
+                          </p>
+                          {selectedBiz && !selectedBiz.website && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-6"
+                              disabled={socialIntelLoading || refreshSocialIntel.isPending}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                refreshSocialIntel.mutate(selectedBiz.id);
+                              }}
+                            >
+                              <RefreshCw className={cn("size-3.5 text-muted-foreground", refreshSocialIntel.isPending && "animate-spin")} />
+                            </Button>
+                          )}
+                        </div>
 
-                        {socialIntelLoading ? (
+                        {socialIntelLoading && !socialIntel?.data ? (
                           <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
                             <Loader2 className="size-3 animate-spin" /> Scanning social presence...
                           </div>

@@ -30,3 +30,27 @@ async def get_social_intelligence(
         return {"data": None}
         
     return {"data": si.data, "created_at": si.created_at}
+
+@router.post("/{business_id}/refresh")
+async def refresh_social_intelligence(
+    business_id: UUID,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+):
+    from app.services.social_intelligence_service import SocialIntelligenceService
+    
+    business_repo = BusinessRepository(session)
+    business = await business_repo.get_by_id(business_id, user.id)
+    if not business:
+        raise HTTPException(status_code=404, detail="Business not found")
+
+    si_service = SocialIntelligenceService(session)
+    
+    try:
+        si = await si_service.trigger_analysis(business.slug, user.id, force=True)
+        if not si:
+            return {"data": None}
+        return {"data": si.data, "created_at": si.created_at}
+    except Exception as e:
+        logger.error(f"Failed to refresh social intelligence for {business.id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to refresh social intelligence")
