@@ -113,6 +113,22 @@ async def discover_businesses(
     query_str = quote_plus(f"{query_normalized} {region_normalized}")
     url = f"https://nominatim.openstreetmap.org/search?q={query_str}&format=json&extratags=1&addressdetails=1&limit=10"
     
+    # Phase 14: Resolve requested location geographic boundary
+    boundary_bbox = None
+    try:
+        async with httpx.AsyncClient() as client:
+            boundary_url = f"https://nominatim.openstreetmap.org/search?q={quote_plus(region_normalized)}&format=json&limit=1"
+            boundary_res = await client.get(boundary_url, headers={"User-Agent": "LeadForgeBackend/1.0"}, timeout=15.0)
+            boundary_res.raise_for_status()
+            boundary_data = boundary_res.json()
+            if boundary_data:
+                bbox = boundary_data[0].get("boundingbox")
+                if bbox and len(bbox) == 4:
+                    boundary_bbox = [float(b) for b in bbox]
+                    logger.info(f"Resolved boundary for {region_normalized}: {boundary_bbox}")
+    except Exception as e:
+        logger.error(f"Failed to resolve boundary for {region_normalized}: {e}")
+        
     try:
         async with httpx.AsyncClient() as client:
             res = await client.get(url, headers={"User-Agent": "LeadForgeBackend/1.0"}, timeout=15.0)
@@ -162,6 +178,38 @@ async def discover_businesses(
     last_error = None
     for place in valid_results:
         try:
+            # Phase 14: Geographic Boundary Validation
+            is_valid_location = False
+            
+            if boundary_bbox:
+                try:
+                    lat = float(place.get("lat"))
+                    lon = float(place.get("lon"))
+                    south, north, west, east = boundary_bbox
+                    lon_valid = (lon >= west or lon <= east) if west > east else (west <= lon <= east)
+                    if (south <= lat <= north and lon_valid):
+                        is_valid_location = True
+                except (TypeError, ValueError):
+                    pass
+            
+            if not is_valid_location and not boundary_bbox:
+                # No bounding box available, fallback to strict address validation
+                addr = place.get("address", {})
+                b_city = addr.get("city") or addr.get("town") or addr.get("village") or addr.get("county") or ""
+                b_state = addr.get("state", "")
+                b_country = addr.get("country", "")
+                
+                city_match = city.lower() in b_city.lower() if b_city else False
+                state_match = state.lower() in b_state.lower() if state and b_state else True
+                country_match = country.lower() in b_country.lower() if b_country else False
+                
+                if city_match and state_match and country_match:
+                    is_valid_location = True
+                    
+            if not is_valid_location:
+                logger.info(f"Phase 14 Validation: Rejected {place.get('name')} as it cannot be confidently placed within {region_normalized}.")
+                continue
+                
             name = place["name"]
             city_slug = region_normalized.replace(' ', '-')
             raw_slug = f"{name.lower().replace(' ', '-').replace('/', '-')}-{city_slug}-{place.get('place_id')}"
