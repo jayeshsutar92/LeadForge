@@ -302,6 +302,8 @@ export interface SocialProfile {
   username: string;
   confidence: number;
   reasoning: string;
+  status?: string;
+  evidence?: string[];
 }
 
 export interface SocialIntelligenceData {

@@ -170,38 +170,77 @@ class ContactDiscoveryService:
                     evidence = []
                     content = f"{c.title} {c.body} {c.display_name or ''} {c.bio or ''}".lower()
                     
+                    # Disqualify bad matches (tourist pages, influencers, guides)
+                    disqualifiers = ["influencer", "blogger", "tourist guide", "visit ", "explore ", "official tourism", "tourism board", "city of", "municipality"]
+                    if any(dq in content for dq in disqualifiers):
+                        c.confidence = 0
+                        c.evidence = ["Disqualified (Tourist/Influencer profile)"]
+                        c.status = "Rejected"
+                        continue
+
+                    # Exact Username Match
+                    business_name_cleaned = re.sub(r'[^a-z0-9]', '', business.name.lower())
+                    if c.username and (c.username.lower() == business_name_cleaned or c.username.lower() in business_name_cleaned):
+                        score += 35
+                        evidence.append("Username Match")
+
                     # Name match
                     if business.name and business.name.lower() in content:
-                        score += 40
+                        score += 30
                         evidence.append("Name Match")
                     elif business.name and any(word.lower() in content for word in business.name.split() if len(word) > 3):
-                        score += 20
+                        score += 15
                         evidence.append("Partial Name Match")
+                        
+                    # Display Name Match
+                    if c.display_name and business.name.lower() in c.display_name.lower():
+                        score += 20
+                        evidence.append("Display Name Match")
                         
                     # City/Location match
                     if business.city and business.city.lower() in content:
-                        score += 30
+                        score += 20
                         evidence.append("City Match")
+                        
+                    # Country match
+                    if business.country and business.country.lower() not in ["unknown", ""] and business.country.lower() in content:
+                        score += 10
+                        evidence.append("Country Match")
                         
                     # Category match
                     if business.category and business.category.lower() in content:
                         score += 15
                         evidence.append("Category Match")
                         
-                    # Phone match (if available in business model, actually it's in BusinessContact or we can assume it's in the text)
-                    # Address match
-                    if business.address and business.address.split(',')[0].lower() in content:
-                        score += 15
+                    # Phone match
+                    if business.phone and re.sub(r'[^0-9]', '', business.phone) in re.sub(r'[^0-9]', '', content):
+                        score += 25
+                        evidence.append("Phone Match")
+                        
+                    # Address match (basic street match if available)
+                    address = getattr(business, "address", None)
+                    if address and address.split(',')[0].lower() in content:
+                        score += 20
                         evidence.append("Address Match")
                         
+                    # External website match
+                    if business.website and business.website.replace("https://", "").replace("http://", "").replace("www.", "").strip("/") in content:
+                        score += 25
+                        evidence.append("Website Match")
+                        
+                    # Existing Maps info
+                    if c.platform == "google_maps":
+                        score += 20
+                        evidence.append("Google Maps Source")
+
                     # Cap at 100
                     score = min(score, 100)
                     c.confidence = score
                     c.evidence = evidence
                     
-                    if score >= 70:
+                    if score >= 65:
                         c.status = "Verified"
-                    elif score >= 40:
+                    elif score >= 35:
                         c.status = "Possible Match"
                     else:
                         c.status = "Rejected"

@@ -1,0 +1,57 @@
+# Contact Intelligence User Guide
+
+Welcome to the new Contact Intelligence feature in LeadForge! This feature enables you to quickly discover and leverage public contact channels (like Instagram, LinkedIn, X, Facebook, and Google Maps) for businesses that **do not have a website**. Follow this step-by-step guide to get started.
+
+## Step-by-Step Instructions
+
+1. **Log In**
+   Open the application and log into your account using your credentials.
+
+2. **Discover Businesses**
+   Navigate to the **Discovery** section. Enter your target industry (e.g., "Plumbers") and location (e.g., "San Francisco, CA"), then click **Discover**. The system will scan for businesses matching your criteria and automatically import them into your CRM.
+
+3. **Open the Leads Page**
+   From the main navigation sidebar, click on **Leads** to view your list of newly discovered businesses and imported contacts.
+
+4. **Open a Business / Lead**
+   Click on any individual Lead card from your list. This opens the detailed view for that business on the right-hand side. Ensure you pick a business that is marked as **not having a website** (this feature specifically targets digital presence gaps).
+
+5. **View the Contact Intelligence Section**
+   Scroll down the lead details panel until you see the **Contact Discovery** section (marked with a Search icon). If the business does not have a website, this feature will be visible. 
+   - Click the **Discover Contacts** button to initiate a public profile search. (This takes a few seconds).
+   - If results were previously cached for this business, they will appear instantly!
+
+6. **Understanding the Results**
+   Once the search is complete, the profiles will be categorized:
+   - **Verified Profiles**: Profiles with a high Confidence Score (70%+). The system matched multiple strong data points (like name, city, category, or address).
+   - **Possible Matches**: Profiles with a moderate Confidence Score (40–69%). These could be relevant but have less conclusive matching evidence.
+   - **Confidence Score**: Displayed as a percentage alongside the profile, indicating how certain the AI is that this profile belongs to the exact business.
+   - **Recommended Outreach Platform**: The best-verified profile will receive a distinct "Recommended" badge, suggesting it's your most reliable channel for initial contact.
+
+7. **Opening a Discovered Profile**
+   On any listed profile card, click the **Open Profile** link (with the external link icon) to open the social media or business page in a new browser tab.
+
+8. **Copying Details**
+   Use the convenient quick-copy buttons on the profile cards:
+   - Click the **Copy Username** button (clipboard icon next to the handle) to copy their `@username`.
+   - Click the **Copy URL** button (clipboard icon next to "Open Profile") to copy the direct URL to your clipboard.
+
+9. **Generating an AI Outreach Message**
+   Scroll down slightly to the **AI Outreach Message** section within the Contact Discovery block.
+   - Click the **Generate Message** button.
+   - Our specialized AI will craft tailored, personalized outreach messages for **each** verified platform (and WhatsApp, if a phone number exists), using the business's specific details and highlighting their missing digital presence as an icebreaker hook.
+
+10. **Copying the Generated Message**
+    Once generated, each platform will have a dedicated message card. Click the **Copy Message** button on any card to instantly copy the personalized text to your clipboard. You can now paste this directly into your DMs or emails!
+
+11. **Regenerating the Message**
+    Not satisfied with the AI's first draft? Click the **Regenerate Message** button at the top of the AI Outreach section to force the AI to write a fresh set of personalized messages.
+
+12. **Handling Empty Results**
+    - **No Profiles Found:** If the business has absolutely zero public digital footprint matching our strict criteria, a message stating *"No public contact profiles found for this business"* will be displayed. This means you should probably rely on phone outreach.
+    - **No Verified Profiles:** If profiles were found but none were highly verified, AI Outreach generation will gracefully decline to generate messages to prevent you from accidentally contacting the wrong business.
+
+## Common Notes & Expected Behavior
+- **Caching:** Contact Discovery and AI Messages are heavily cached. Navigating away and back will instantly reload your previous results without using extra API credits or forcing you to wait.
+- **Failures:** If an external search engine temporarily hiccups while searching a specific platform, the system skips it gracefully and delivers results for the remaining platforms without breaking your page.
+- **Independence:** This workflow is completely independent of the overarching Business Intelligence (BI) scans.

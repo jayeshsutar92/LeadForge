@@ -713,41 +713,89 @@ function LeadsPage() {
                         ) : socialIntel?.data ? (
                           <div className="mt-3 space-y-3">
                             {socialIntel.data.profiles?.length > 0 ? (
-                              <div className="space-y-2">
-                                {socialIntel.data.profiles.map((p, i) => (
-                                  <div
-                                    key={i}
-                                    className="flex flex-col gap-1 rounded bg-secondary/30 p-2 text-xs"
-                                  >
-                                    <div className="flex items-center justify-between">
-                                      <span className="font-medium capitalize">{p.platform}</span>
-                                      <span
-                                        className={
-                                          p.confidence > 80 ? "text-success" : "text-warning"
-                                        }
+                              <div className="space-y-4">
+                                {socialIntel.data.profiles.filter(p => p.status === "Verified" || p.confidence >= 65).length > 0 && (
+                                  <div className="space-y-2">
+                                    <p className="text-[10px] uppercase text-muted-foreground font-semibold">Verified Profiles</p>
+                                    {socialIntel.data.profiles.filter(p => p.status === "Verified" || p.confidence >= 65).map((p, i) => (
+                                      <div
+                                        key={i}
+                                        className="flex flex-col gap-1.5 rounded bg-secondary/30 p-2 text-xs border border-success/20"
                                       >
-                                        {p.confidence > 80
-                                          ? "Verified Candidate"
-                                          : "Possible Match"}{" "}
-                                        ({p.confidence}%)
-                                      </span>
-                                    </div>
-                                    {p.url && p.url !== "#" ? (
-                                      <a
-                                        href={p.url}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="text-muted-foreground hover:underline truncate"
-                                      >
-                                        @{p.username || "Profile"}
-                                      </a>
-                                    ) : (
-                                      <span className="text-muted-foreground truncate">
-                                        @{p.username || "Unknown ID"}
-                                      </span>
-                                    )}
+                                        <div className="flex items-center justify-between">
+                                          <span className="font-medium capitalize text-foreground">{p.platform}</span>
+                                          <span className="text-success font-medium">Verified ({p.confidence}%)</span>
+                                        </div>
+                                        {p.url && p.url !== "#" ? (
+                                          <a
+                                            href={p.url}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="text-primary hover:underline truncate"
+                                          >
+                                            @{p.username || "Profile"}
+                                          </a>
+                                        ) : (
+                                          <span className="text-muted-foreground truncate">
+                                            @{p.username || "Unknown ID"}
+                                          </span>
+                                        )}
+                                        {p.evidence && p.evidence.length > 0 && (
+                                          <div className="mt-1 pt-1 border-t border-border/50">
+                                            <p className="text-[10px] font-medium text-muted-foreground mb-1">Verification Evidence:</p>
+                                            <div className="flex flex-wrap gap-1">
+                                              {p.evidence.map((ev, idx) => (
+                                                <span key={idx} className="bg-primary/10 text-primary text-[9px] px-1.5 py-0.5 rounded">
+                                                  {ev}
+                                                </span>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    ))}
                                   </div>
-                                ))}
+                                )}
+                                
+                                {socialIntel.data.profiles.filter(p => p.status !== "Verified" && p.confidence < 65).length > 0 && (
+                                  <div className="space-y-2">
+                                    <p className="text-[10px] uppercase text-muted-foreground font-semibold">Possible Matches</p>
+                                    {socialIntel.data.profiles.filter(p => p.status !== "Verified" && p.confidence < 65).map((p, i) => (
+                                      <div
+                                        key={i}
+                                        className="flex flex-col gap-1.5 rounded bg-secondary/20 p-2 text-xs opacity-75"
+                                      >
+                                        <div className="flex items-center justify-between">
+                                          <span className="font-medium capitalize text-muted-foreground">{p.platform}</span>
+                                          <span className="text-warning">Possible Match ({p.confidence}%)</span>
+                                        </div>
+                                        {p.url && p.url !== "#" ? (
+                                          <a
+                                            href={p.url}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="text-muted-foreground hover:underline truncate"
+                                          >
+                                            @{p.username || "Profile"}
+                                          </a>
+                                        ) : (
+                                          <span className="text-muted-foreground truncate">
+                                            @{p.username || "Unknown ID"}
+                                          </span>
+                                        )}
+                                        {p.evidence && p.evidence.length > 0 && (
+                                          <div className="mt-1 flex flex-wrap gap-1">
+                                            {p.evidence.map((ev, idx) => (
+                                              <span key={idx} className="bg-secondary text-muted-foreground text-[9px] px-1.5 py-0.5 rounded">
+                                                {ev}
+                                              </span>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
                             ) : (
                               <p className="text-xs text-muted-foreground italic">
@@ -755,13 +803,22 @@ function LeadsPage() {
                               </p>
                             )}
 
-                            {socialIntel.data.recommended_platform && (
+                            {socialIntel.data.recommended_platform ? (
                               <div className="rounded border border-primary/20 bg-primary/5 p-2">
                                 <p className="text-[10px] uppercase text-muted-foreground font-semibold">
                                   Recommended Channel
                                 </p>
                                 <p className="text-xs font-medium capitalize mt-0.5">
                                   {socialIntel.data.recommended_platform}
+                                </p>
+                              </div>
+                            ) : (
+                              <div className="rounded border border-border/50 bg-secondary/10 p-2">
+                                <p className="text-[10px] uppercase text-muted-foreground font-semibold">
+                                  Recommended Channel
+                                </p>
+                                <p className="text-xs font-medium text-muted-foreground mt-0.5 italic">
+                                  No Verified Profile
                                 </p>
                               </div>
                             )}
