@@ -29,6 +29,7 @@ class Business(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     category: Mapped[str] = mapped_column(String(255), nullable=False)
     city: Mapped[str] = mapped_column(String(255), nullable=False)
+    state: Mapped[str | None] = mapped_column(String(255), nullable=True)
     country: Mapped[str] = mapped_column(String(255), nullable=False)
     bio: Mapped[str] = mapped_column(Text, nullable=False, default="")
     followers: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

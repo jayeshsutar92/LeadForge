@@ -46,6 +46,7 @@ class SocialIntelligenceService:
                         business_name=business.name,
                         category=business.category,
                         city=business.city,
+                        state=business.state or "",
                         country=business.country,
                         address=business.bio,
                         phone=business.phone or "",

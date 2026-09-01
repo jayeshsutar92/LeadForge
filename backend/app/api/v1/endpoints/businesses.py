@@ -245,12 +245,14 @@ async def discover_businesses(
             website = extratags.get("website") or extratags.get("contact:website") or extratags.get("url") or ""
             city_extracted = address.get("city") or address.get("town") or address.get("village") or address.get("county") or city
             country_extracted = address.get("country", country)
+            state_extracted = address.get("state") or state if state else address.get("state")
             
             biz_create = BusinessCreate(
                 name=name,
                 slug=slug,
                 category=query_normalized,
                 city=city_extracted,
+                state=state_extracted,
                 country=country_extracted,
                 website=website,
                 bio=f"Discovered via OpenStreetMap. Category: {place.get('type', 'unknown')}"

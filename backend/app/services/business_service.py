@@ -27,6 +27,7 @@ class BusinessService:
             "name": b.name,
             "category": b.category,
             "city": b.city,
+            "state": b.state,
             "country": b.country,
             "bio": b.bio,
             "followers": b.followers,

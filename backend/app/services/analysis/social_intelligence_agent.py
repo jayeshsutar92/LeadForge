@@ -32,7 +32,7 @@ async def fetch_profile_metadata(url: str) -> dict:
         pass
     return metadata
 
-async def discover_social_profiles(business_name: str, category: str, city: str, country: str, address: str = "", phone: str = "", website: str = "") -> dict:
+async def discover_social_profiles(business_name: str, category: str, city: str, state: str, country: str, address: str = "", phone: str = "", website: str = "") -> dict:
     """
     Search DuckDuckGo for public social profiles and use the LLM to filter and extract them.
     Returns a dictionary of profiles, scores, and recommended channel.
@@ -42,6 +42,7 @@ async def discover_social_profiles(business_name: str, category: str, city: str,
         ("facebook", "site:facebook.com"),
         ("linkedin", "site:linkedin.com"),
         ("x", "site:x.com OR site:twitter.com"),
+        ("google", "site:google.com/search?q="),
     ]
     
     # We will gather search snippets for the LLM
@@ -50,7 +51,8 @@ async def discover_social_profiles(business_name: str, category: str, city: str,
     try:
         ddgs = DDGS()
         for platform_name, search_prefix in platforms:
-            query = f"{search_prefix} {business_name} {city}"
+            location_str = f"{city} {state}" if state else city
+            query = f"{search_prefix} {business_name} {location_str}"
             # get up to 3 results per platform
             results = ddgs.text(query, max_results=3)
             if results:
@@ -79,7 +81,7 @@ You are an expert Social Intelligence agent. Your task is to identify the offici
 Business Context:
 - Name: {business_name}
 - Category: {category}
-- Location: {city}, {country}
+- Location: {city}{f', {state}' if state else ''}, {country}
 - Address/Bio Details: {address}
 
 Search Results:
@@ -87,10 +89,12 @@ Search Results:
 
 Task:
 1. Review the search results and identify the OFFICIAL profiles for this exact business.
-2. If you cannot confidently identify an official profile, you MUST STILL return the BEST candidate profile(s) you found. NEVER return an empty profiles list if you have candidate URLs.
-3. For each profile, assign a confidence score (0-100). If it's a candidate but you aren't certain, assign a lower confidence score (e.g., under 80).
-4. Determine the 'recommended_platform' for outreach based on which profile seems most active or professional (e.g., if Instagram is 95 confidence and Facebook is 80, recommend Instagram).
-5. Generate a short, personalized outreach message for EACH discovered platform. Do NOT mention that you searched for them, just say you came across their profile.
+2. Prioritize candidate profiles whose public information matches the verified business location. Reject candidate profiles belonging to another city, state, country, or unrelated business with a similar name. Never recommend generic city pages, tourism pages, community pages, influencers, or unrelated businesses.
+3. If you cannot confidently identify an official profile, you MUST STILL return the BEST candidate profile(s) you found (that match the geographic location). NEVER return an empty profiles list if you have candidate URLs.
+4. For each profile, assign a confidence score (0-100). If it's a candidate but you aren't certain, assign a lower confidence score (e.g., under 80).
+5. Determine the 'recommended_platform' for outreach based on which profile seems most active or professional (e.g., if Instagram is 95 confidence and Facebook is 80, recommend Instagram).
+6. Generate a short, personalized outreach message for EACH discovered platform. Do NOT mention that you searched for them, just say you came across their profile.
+7. Output the geographic context (city, state, country) you extracted or inferred from the profile for later verification.
 
 Format your output strictly as a JSON object adhering to this schema. DO NOT include markdown formatting or extra text.
 """
@@ -103,13 +107,16 @@ Format your output strictly as a JSON object adhering to this schema. DO NOT inc
                 "items": {
                     "type": "object",
                     "properties": {
-                        "platform": {"type": "string", "enum": ["instagram", "facebook", "linkedin", "x"]},
+                        "platform": {"type": "string", "enum": ["instagram", "facebook", "linkedin", "x", "google"]},
                         "url": {"type": "string"},
                         "username": {"type": "string"},
                         "confidence": {"type": "number"},
-                        "reasoning": {"type": "string"}
+                        "reasoning": {"type": "string"},
+                        "city": {"type": "string"},
+                        "state": {"type": "string"},
+                        "country": {"type": "string"}
                     },
-                    "required": ["platform", "url", "username", "confidence", "reasoning"]
+                    "required": ["platform", "url", "username", "confidence", "reasoning", "city", "country"]
                 }
             },
             "recommended_platform": {

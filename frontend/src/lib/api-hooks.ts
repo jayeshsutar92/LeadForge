@@ -8,6 +8,7 @@ export interface BusinessCard {
   name: string;
   category: string;
   city: string;
+  state?: string;
   country: string;
   website?: string;
   rating?: number;
@@ -50,6 +51,9 @@ export interface ContactDiscoveryCandidate {
   display_name?: string;
   bio?: string;
   body: string;
+  city?: string;
+  state?: string;
+  country?: string;
   confidence: number;
   status: string;
   evidence: string[];
@@ -91,7 +95,12 @@ export const useBusinessStats = () => {
 export const useDiscoverBusinesses = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (data: { query: string; country: string; state?: string | undefined; city: string }) => {
+    mutationFn: async (data: {
+      query: string;
+      country: string;
+      state?: string | undefined;
+      city: string;
+    }) => {
       const res = await apiClient.post("/businesses/discover", data);
       return res.data;
     },

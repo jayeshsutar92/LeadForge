@@ -8,6 +8,7 @@ class BusinessCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     category: str = Field(..., min_length=1, max_length=255)
     city: str = Field(..., min_length=1, max_length=255)
+    state: Optional[str] = None
     country: str = Field(..., min_length=1, max_length=255)
     bio: Optional[str] = None
     website: Optional[str] = None

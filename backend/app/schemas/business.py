@@ -11,6 +11,7 @@ class BusinessCard(BaseModel):
     name: str
     category: str
     city: str
+    state: Optional[str] = None
     country: str
     bio: str
     followers: int
