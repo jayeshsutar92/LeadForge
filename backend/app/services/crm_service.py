@@ -54,7 +54,7 @@ class CRMService:
     async def get_lead_by_business(self, business_id: UUID, user_id: UUID) -> Lead | None:
         return await self.repo.get_lead_by_business(business_id, user_id)
 
-    async def create_lead(self, payload: LeadCreate, current_user_id: UUID) -> Lead:
+    async def create_lead(self, payload: LeadCreate, current_user_id: UUID, session_id: str | None = None) -> Lead:
         # Check if lead already exists for this business
         existing = await self.repo.get_lead_by_business(payload.business_id, current_user_id)
         if existing:
@@ -70,6 +70,9 @@ class CRMService:
             next_follow_up=payload.next_follow_up,
             notes=payload.notes,
         )
+        
+        if session_id:
+            lead.discovery_session_ids = [session_id]
         
         created = await self.repo.create_lead(lead)
         

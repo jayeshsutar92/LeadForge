@@ -102,11 +102,28 @@ class BusinessService:
 
         return len(cards), cards
 
-    async def create_business(self, data: BusinessCreate, user_id: UUID) -> BusinessCard:
+    async def create_business(self, data: BusinessCreate, user_id: UUID, session_id: str | None = None) -> BusinessCard:
         # Check if it already exists by slug (exact match)
         existing = await self.business_repo.get_by_slug(data.slug, user_id)
         if existing:
+            # Update session id if missing
+            if session_id and session_id not in existing.discovery_session_ids:
+                s_ids = list(existing.discovery_session_ids)
+                s_ids.append(session_id)
+                existing.discovery_session_ids = s_ids
+                await self.session.commit()
             return self._to_card(existing)
+            
+        # Prevent exact duplicates by URL
+        if data.website:
+            existing_web = await self.business_repo.get_by_website(data.website, user_id)
+            if existing_web:
+                if session_id and session_id not in existing_web.discovery_session_ids:
+                    s_ids = list(existing_web.discovery_session_ids)
+                    s_ids.append(session_id)
+                    existing_web.discovery_session_ids = s_ids
+                    await self.session.commit()
+                return self._to_card(existing_web)
             
         # Canonical Resolution: Check if it already exists by deterministic matching
         candidates = await self.business_repo.find_potential_matches(data.name, user_id)
@@ -153,6 +170,11 @@ class BusinessService:
                 if data.bio and not best_candidate.bio:
                     best_candidate.bio = data.bio
                     updates = True
+                if session_id and session_id not in best_candidate.discovery_session_ids:
+                    s_ids = list(best_candidate.discovery_session_ids)
+                    s_ids.append(session_id)
+                    best_candidate.discovery_session_ids = s_ids
+                    updates = True
                     
                 if updates:
                     await self.session.commit()
@@ -160,7 +182,11 @@ class BusinessService:
                 return self._to_card(best_candidate)
                 
         # Convert schema to model
-        business = Business(**data.dict(), user_id=user_id)
+        business_kwargs = data.dict()
+        business_kwargs["user_id"] = user_id
+        if session_id:
+            business_kwargs["discovery_session_ids"] = [session_id]
+        business = Business(**business_kwargs)
         created = await self.business_repo.create(business)
         return self._to_card(created)
 

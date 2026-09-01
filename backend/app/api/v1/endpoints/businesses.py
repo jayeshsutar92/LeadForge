@@ -138,6 +138,7 @@ async def discover_businesses(
     discovered_cards = []
     social_intelligence_slugs = []
     
+    last_error = None
     for place in valid_results:
         try:
             name = place["name"]
@@ -155,7 +156,7 @@ async def discover_businesses(
                     session.add(existing)
                     
                 # Add current session to existing lead
-                existing_lead = await crm_service.repo.get_lead_by_business_user(existing.id, user.id)
+                existing_lead = await crm_service.repo.get_lead_by_business(existing.id, user.id)
                 if existing_lead and active_session_id not in existing_lead.discovery_session_ids:
                     lead_session_ids = list(existing_lead.discovery_session_ids)
                     lead_session_ids.append(active_session_id)
@@ -186,9 +187,7 @@ async def discover_businesses(
                 bio=f"Discovered via OpenStreetMap. Category: {place.get('type', 'unknown')}"
             )
             
-            biz = await biz_service.create_business(biz_create, user.id)
-            biz.discovery_session_ids = [active_session_id]
-            session.add(biz)
+            biz = await biz_service.create_business(biz_create, user.id, session_id=active_session_id)
             if any(c.id == biz.id for c in discovered_cards):
                 continue
                 
@@ -199,10 +198,7 @@ async def discover_businesses(
                 source="Discovery Scan",
                 notes=f"Discovered scanning for {payload.query} in {payload.region}"
             )
-            lead = await crm_service.create_lead(lead_create, current_user_id=user.id)
-            lead.discovery_session_ids = [active_session_id]
-            session.add(lead)
-            await session.flush()
+            lead = await crm_service.create_lead(lead_create, current_user_id=user.id, session_id=active_session_id)
             # Regular BI analysis
             try:
                 await bi_service.trigger_analysis(biz.slug, user.id)
@@ -218,10 +214,11 @@ async def discover_businesses(
             
         except Exception as e:
             failed_imports += 1
+            last_error = e
             logger.exception(f"Failed to process discovered business {place.get('name')}: {e}")
 
     if failed_imports > 0 and failed_imports == len(valid_results):
-        raise HTTPException(status_code=500, detail="Failed to import any businesses from discovery due to internal errors.")
+        raise HTTPException(status_code=500, detail=f"Failed to import all {failed_imports} discovered businesses. Last error: {str(last_error)}")
 
     # Trigger Social Intelligence sequentially in a single background task
     if social_intelligence_slugs:
