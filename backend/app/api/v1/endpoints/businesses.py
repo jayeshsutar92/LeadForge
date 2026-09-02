@@ -217,6 +217,9 @@ async def discover_businesses(
     social_intelligence_slugs = []
     
     last_error = None
+    
+    # Pre-filter for geographic validation to avoid unnecessary AI calls
+    geographically_valid_places = []
     for place in valid_results:
         try:
             # Phase 14: Geographic Boundary Validation
@@ -251,6 +254,62 @@ async def discover_businesses(
                 logger.info(f"Phase 14 Validation: Rejected {place.get('name')} as it cannot be confidently placed within {region_normalized}.")
                 continue
                 
+            geographically_valid_places.append(place)
+        except Exception as e:
+            logger.warning(f"Error during geographic validation for {place.get('name')}: {e}")
+
+    # Phase 17: Concurrent AI Validations (Category & Website)
+    from app.services.analysis.category_validator_agent import validate_business_category
+    from app.services.analysis.website_discovery_agent import discover_official_website
+
+    async def _run_ai_validations(p: dict) -> dict | None:
+        p_name = p["name"]
+        osm_type = p.get("type", "unknown")
+        
+        # 2. Category validation
+        cat_val = await validate_business_category(p_name, query_normalized, osm_type)
+        if not cat_val.get("is_valid", True):
+            logger.info(f"Phase 17 Validation: Rejected {p_name} due to category mismatch. Reason: {cat_val.get('reasoning')}")
+            return None
+            
+        # 3. Website Verification
+        extratags = p.get("extratags") or {}
+        address = p.get("address") or {}
+        website = extratags.get("website") or extratags.get("contact:website") or extratags.get("url") or ""
+        
+        c_extracted = address.get("city") or address.get("town") or address.get("village") or address.get("county") or city
+        co_extracted = address.get("country", country)
+        s_extracted = address.get("state") or state if state else address.get("state")
+        
+        if not website:
+            web_discovery = await discover_official_website(
+                p_name, query_normalized, c_extracted, s_extracted, co_extracted, address=f"{osm_type}"
+            )
+            if web_discovery.get("website"):
+                website = web_discovery["website"]
+                logger.info(f"Phase 17 Website Discovery: Found official website for {p_name}: {website}")
+                
+        p["_validated_website"] = website
+        p["_city_extracted"] = c_extracted
+        p["_country_extracted"] = co_extracted
+        p["_state_extracted"] = s_extracted
+        return p
+
+    ai_tasks = [_run_ai_validations(p) for p in geographically_valid_places]
+    validated_places = await asyncio.gather(*ai_tasks, return_exceptions=True)
+
+    for place_result in validated_places:
+        if place_result is None:
+            continue
+            
+        if isinstance(place_result, Exception):
+            logger.exception(f"AI validation task failed: {place_result}")
+            failed_imports += 1
+            last_error = place_result
+            continue
+
+        place = place_result
+        try:
             name = place["name"]
             city_slug = region_normalized.replace(' ', '-')
             raw_slug = f"{name.lower().replace(' ', '-').replace('/', '-')}-{city_slug}-{place.get('place_id')}"
@@ -280,13 +339,10 @@ async def discover_businesses(
                     discovered_cards.append(card)
                 continue
                 
-            extratags = place.get("extratags") or {}
-            address = place.get("address") or {}
-            
-            website = extratags.get("website") or extratags.get("contact:website") or extratags.get("url") or ""
-            city_extracted = address.get("city") or address.get("town") or address.get("village") or address.get("county") or city
-            country_extracted = address.get("country", country)
-            state_extracted = address.get("state") or state if state else address.get("state")
+            website = place["_validated_website"]
+            city_extracted = place["_city_extracted"]
+            country_extracted = place["_country_extracted"]
+            state_extracted = place["_state_extracted"]
             
             biz_create = BusinessCreate(
                 name=name,
@@ -314,7 +370,6 @@ async def discover_businesses(
             # Regular BI analysis
             try:
                 await bi_service.trigger_analysis(biz.slug, user.id)
-                await asyncio.sleep(1.5) # Prevent rate-limiting on burst discovery
             except Exception as e:
                 logger.error(f"Failed to trigger analysis for {biz.slug}: {e}")
                 
@@ -327,7 +382,7 @@ async def discover_businesses(
         except Exception as e:
             failed_imports += 1
             last_error = e
-            logger.exception(f"Failed to process discovered business {place.get('name')}: {e}")
+            logger.exception(f"Failed to process discovered business {place.get('name', 'Unknown')}: {e}")
 
     if failed_imports > 0 and failed_imports == len(valid_results):
         raise HTTPException(status_code=500, detail=f"Failed to import all {failed_imports} discovered businesses. Last error: {str(last_error)}")
