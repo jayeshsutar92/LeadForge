@@ -34,11 +34,9 @@ apiClient.interceptors.response.use(
 
 export interface ApiError {
   response?: {
-    data?: {
-      detail?:
-        string | { message?: string } | Array<{ msg?: string; type?: string; loc?: string[] }>;
-      error?: { message?: string };
-    };
+    status?: number;
+    statusText?: string;
+    data?: any;
   };
   message?: string;
 }
@@ -46,20 +44,42 @@ export interface ApiError {
 export function getErrorMessage(err: unknown): string {
   const error = err as ApiError;
 
-  if (error.response?.data) {
-    const data = error.response.data;
-    if (typeof data.detail === "string") {
-      return data.detail;
+  if (error.response) {
+    if (error.response.data) {
+      const data = error.response.data;
+      if (typeof data.detail === "string") {
+        return data.detail;
+      }
+      if (data.detail && !Array.isArray(data.detail) && data.detail.message) {
+        return data.detail.message;
+      }
+      if (Array.isArray(data.detail) && data.detail.length > 0 && data.detail[0]?.msg) {
+        return data.detail[0].msg;
+      }
+      if (data.error?.message) {
+        return data.error.message;
+      }
+      if (typeof data === "string" && data.length > 0 && data.length < 200) {
+        return data;
+      }
     }
-    if (data.detail && !Array.isArray(data.detail) && data.detail.message) {
-      return data.detail.message;
+    
+    if (error.response.status === 500) {
+      return "Internal Server Error: The backend encountered an unexpected problem.";
     }
-    if (Array.isArray(data.detail) && data.detail.length > 0 && data.detail[0]?.msg) {
-      return data.detail[0].msg;
+    if (error.response.status === 404) {
+      return "Not Found: The requested resource could not be found on the server.";
     }
-    if (data.error?.message) {
-      return data.error.message;
+    if (error.response.status === 403) {
+      return "Forbidden: You do not have permission to perform this action.";
     }
+    if (error.response.statusText) {
+      return `Server Error: ${error.response.statusText}`;
+    }
+  }
+
+  if (error.message === "Network Error") {
+    return "Network Error: Unable to reach the server. Please check your connection.";
   }
 
   return error.message || "An unexpected error occurred.";

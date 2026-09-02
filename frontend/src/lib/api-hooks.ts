@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "./api";
+import { useAuth } from "./auth";
 
 // --- Types ---
 export interface BusinessCard {
@@ -73,22 +74,26 @@ export interface ContactDiscoveryResponse {
 
 // --- Hooks ---
 export const useBusinesses = (params?: Record<string, unknown>) => {
+  const { isAuthenticated } = useAuth();
   return useQuery({
     queryKey: ["businesses", params],
     queryFn: async () => {
       const res = await apiClient.get<BusinessListResponse>("/businesses", { params });
       return res.data;
     },
+    enabled: isAuthenticated,
   });
 };
 
 export const useBusinessStats = () => {
+  const { isAuthenticated } = useAuth();
   return useQuery({
     queryKey: ["businesses", "stats"],
     queryFn: async () => {
       const res = await apiClient.get("/businesses/stats");
       return res.data;
     },
+    enabled: isAuthenticated,
   });
 };
 
@@ -113,12 +118,14 @@ export const useDiscoverBusinesses = () => {
 };
 
 export const useLeads = (params?: Record<string, unknown>) => {
+  const { isAuthenticated } = useAuth();
   return useQuery({
     queryKey: ["leads", params],
     queryFn: async () => {
       const res = await apiClient.get<LeadListResponse>("/crm/leads", { params });
       return res.data;
     },
+    enabled: isAuthenticated,
   });
 };
 
@@ -164,6 +171,7 @@ export const useUpdateLead = () => {
 };
 
 export const useLeadDetail = (leadId: string | null) => {
+  const { isAuthenticated } = useAuth();
   return useQuery({
     queryKey: ["leads", leadId],
     queryFn: async () => {
@@ -171,11 +179,12 @@ export const useLeadDetail = (leadId: string | null) => {
       const res = await apiClient.get(`/crm/leads/${leadId}`);
       return res.data;
     },
-    enabled: !!leadId,
+    enabled: !!leadId && isAuthenticated,
   });
 };
 
 export const useBusinessDetail = (slug: string | null) => {
+  const { isAuthenticated } = useAuth();
   return useQuery({
     queryKey: ["businesses", slug],
     queryFn: async () => {
@@ -183,11 +192,12 @@ export const useBusinessDetail = (slug: string | null) => {
       const res = await apiClient.get(`/businesses/${slug}`);
       return res.data;
     },
-    enabled: !!slug,
+    enabled: !!slug && isAuthenticated,
   });
 };
 
 export const useIntelligence = (slug: string | null) => {
+  const { isAuthenticated } = useAuth();
   return useQuery({
     queryKey: ["businesses", slug, "intelligence"],
     queryFn: async () => {
@@ -195,7 +205,7 @@ export const useIntelligence = (slug: string | null) => {
       const res = await apiClient.get(`/businesses/${slug}/intelligence/latest`);
       return res.data;
     },
-    enabled: !!slug,
+    enabled: !!slug && isAuthenticated,
     retry: false, // May 404 if not analyzed yet
   });
 };
@@ -214,6 +224,7 @@ export const useTriggerAnalysis = () => {
 };
 
 export const useOpportunity = (slug: string | null, biId: string | null) => {
+  const { isAuthenticated } = useAuth();
   return useQuery({
     queryKey: ["businesses", slug, "opportunity", biId],
     queryFn: async () => {
@@ -221,7 +232,7 @@ export const useOpportunity = (slug: string | null, biId: string | null) => {
       const res = await apiClient.get(`/businesses/${slug}/intelligence/${biId}/opportunity`);
       return res.data;
     },
-    enabled: !!slug && !!biId,
+    enabled: !!slug && !!biId && isAuthenticated,
     retry: false, // May 404 if not generated yet
   });
 };
@@ -260,6 +271,7 @@ export const useGenerateProposal = () => {
 };
 
 export const useProposal = (slug: string | null, opportunityId: string | null) => {
+  const { isAuthenticated } = useAuth();
   return useQuery({
     queryKey: ["businesses", slug, "proposal", opportunityId],
     queryFn: async () => {
@@ -267,12 +279,13 @@ export const useProposal = (slug: string | null, opportunityId: string | null) =
       const res = await apiClient.get(`/businesses/${slug}/opportunity/${opportunityId}/proposal`);
       return res.data;
     },
-    enabled: !!slug && !!opportunityId,
+    enabled: !!slug && !!opportunityId && isAuthenticated,
     retry: false,
   });
 };
 
 export const useAllProposals = () => {
+  const { isAuthenticated } = useAuth();
   return useQuery({
     queryKey: ["proposals", "all"],
     queryFn: async () => {
@@ -280,6 +293,7 @@ export const useAllProposals = () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return res.data as Array<{ slug: string; proposal: any }>;
     },
+    enabled: isAuthenticated,
   });
 };
 
@@ -325,13 +339,14 @@ export interface SocialIntelligenceData {
 }
 
 export function useSocialIntelligence(businessId: string | undefined) {
+  const { isAuthenticated } = useAuth();
   return useQuery({
     queryKey: ["socialIntelligence", businessId],
     queryFn: async (): Promise<SocialIntelligenceData> => {
       const res = await apiClient.get(`/social-intelligence/${businessId}`);
       return res.data;
     },
-    enabled: !!businessId,
+    enabled: !!businessId && isAuthenticated,
   });
 }
 
@@ -391,6 +406,7 @@ export const useDeleteProposal = () => {
 };
 
 export const useContactDiscovery = (slug: string | null) => {
+  const { isAuthenticated } = useAuth();
   return useQuery({
     queryKey: ["businesses", slug, "contact-discovery"],
     queryFn: async () => {
@@ -400,7 +416,7 @@ export const useContactDiscovery = (slug: string | null) => {
       );
       return res.data;
     },
-    enabled: !!slug,
+    enabled: !!slug && isAuthenticated,
     retry: false,
     staleTime: 5 * 60 * 1000,
   });

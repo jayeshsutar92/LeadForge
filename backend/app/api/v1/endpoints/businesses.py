@@ -726,7 +726,7 @@ async def generate_outreach(
 
 # ─── Business CRUD ────────────────────────────────────────────────────────────
 
-@router.post("/", response_model=BusinessCard)
+@router.post("", response_model=BusinessCard)
 async def create_business(
     payload: BusinessCreate,
     user: User = Depends(get_current_user),
