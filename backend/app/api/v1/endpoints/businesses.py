@@ -218,97 +218,154 @@ async def discover_businesses(
     
     last_error = None
     
-    # Pre-filter for geographic validation to avoid unnecessary AI calls
-    geographically_valid_places = []
-    for place in valid_results:
-        try:
-            # Phase 14: Geographic Boundary Validation
-            is_valid_location = False
-            
-            if boundary_bbox:
-                try:
-                    lat = float(place.get("lat"))
-                    lon = float(place.get("lon"))
-                    south, north, west, east = boundary_bbox
-                    lon_valid = (lon >= west or lon <= east) if west > east else (west <= lon <= east)
-                    if (south <= lat <= north and lon_valid):
-                        is_valid_location = True
-                except (TypeError, ValueError):
-                    pass
-            
-            if not is_valid_location and not boundary_bbox:
-                # No bounding box available, fallback to strict address validation
-                addr = place.get("address", {})
-                b_city = addr.get("city") or addr.get("town") or addr.get("village") or addr.get("county") or ""
-                b_state = addr.get("state", "")
-                b_country = addr.get("country", "")
+    # Phase 19: Improved Caching (Cache Validated & Ranked Results)
+    validated_cache_key = f"cache:discovery_validated_v2:{query_str}"
+    cached_validated = None
+    try:
+        cached_validated = await redis_client.get(validated_cache_key)
+    except Exception as e:
+        logger.error(f"Redis cache error: {e}")
+
+    final_valid_places = []
+    
+    if cached_validated:
+        final_valid_places = json.loads(cached_validated)
+        logger.info(f"Phase 19: Cache HIT for validated discovery {query_str}")
+    else:
+        # Pre-filter for geographic validation to avoid unnecessary AI calls
+        geographically_valid_places = []
+        for place in valid_results:
+            try:
+                # Phase 14: Geographic Boundary Validation
+                is_valid_location = False
                 
-                city_match = city.lower() in b_city.lower() if b_city else False
-                state_match = state.lower() in b_state.lower() if state and b_state else True
-                country_match = country.lower() in b_country.lower() if b_country else False
+                if boundary_bbox:
+                    try:
+                        lat = float(place.get("lat"))
+                        lon = float(place.get("lon"))
+                        south, north, west, east = boundary_bbox
+                        lon_valid = (lon >= west or lon <= east) if west > east else (west <= lon <= east)
+                        if (south <= lat <= north and lon_valid):
+                            is_valid_location = True
+                    except (TypeError, ValueError):
+                        pass
                 
-                if city_match and state_match and country_match:
-                    is_valid_location = True
+                if not is_valid_location and not boundary_bbox:
+                    # No bounding box available, fallback to strict address validation
+                    addr = place.get("address", {})
+                    b_city = addr.get("city") or addr.get("town") or addr.get("village") or addr.get("county") or ""
+                    b_state = addr.get("state", "")
+                    b_country = addr.get("country", "")
                     
-            if not is_valid_location:
-                logger.info(f"Phase 14 Validation: Rejected {place.get('name')} as it cannot be confidently placed within {region_normalized}.")
+                    city_match = city.lower() in b_city.lower() if b_city else False
+                    state_match = state.lower() in b_state.lower() if state and b_state else True
+                    country_match = country.lower() in b_country.lower() if b_country else False
+                    
+                    if city_match and state_match and country_match:
+                        is_valid_location = True
+                        
+                if not is_valid_location:
+                    logger.info(f"Phase 14 Validation: Rejected {place.get('name')} as it cannot be confidently placed within {region_normalized}.")
+                    continue
+                    
+                geographically_valid_places.append(place)
+            except Exception as e:
+                logger.warning(f"Error during geographic validation for {place.get('name')}: {e}")
+
+        # Phase 17: Concurrent AI Validations (Category & Website)
+        from app.services.analysis.category_validator_agent import validate_business_category
+        from app.services.analysis.website_discovery_agent import discover_official_website
+
+        async def _run_ai_validations(p: dict) -> dict | None:
+            p_name = p["name"]
+            osm_type = p.get("type", "unknown")
+            
+            # 2. Category validation
+            cat_val = await validate_business_category(p_name, query_normalized, osm_type)
+            if not cat_val.get("is_valid", True):
+                logger.info(f"Phase 17 Validation: Rejected {p_name} due to category mismatch. Reason: {cat_val.get('reasoning')}")
+                return None
+                
+            # 3. Website Verification
+            extratags = p.get("extratags") or {}
+            address = p.get("address") or {}
+            website = extratags.get("website") or extratags.get("contact:website") or extratags.get("url") or ""
+            
+            c_extracted = address.get("city") or address.get("town") or address.get("village") or address.get("county") or city
+            co_extracted = address.get("country", country)
+            s_extracted = address.get("state") or state if state else address.get("state")
+            
+            if not website:
+                web_discovery = await discover_official_website(
+                    p_name, query_normalized, c_extracted, s_extracted, co_extracted, address=f"{osm_type}"
+                )
+                if web_discovery.get("website"):
+                    website = web_discovery["website"]
+                    logger.info(f"Phase 17 Website Discovery: Found official website for {p_name}: {website}")
+                    
+            p["_validated_website"] = website
+            p["_city_extracted"] = c_extracted
+            p["_country_extracted"] = co_extracted
+            p["_state_extracted"] = s_extracted
+            return p
+
+        ai_tasks = [_run_ai_validations(p) for p in geographically_valid_places]
+        validated_places = await asyncio.gather(*ai_tasks, return_exceptions=True)
+        
+        valid_only = []
+        for place_result in validated_places:
+            if place_result is None:
                 continue
                 
-            geographically_valid_places.append(place)
-        except Exception as e:
-            logger.warning(f"Error during geographic validation for {place.get('name')}: {e}")
+            if isinstance(place_result, Exception):
+                logger.exception(f"AI validation task failed: {place_result}")
+                failed_imports += 1
+                last_error = place_result
+                continue
+            valid_only.append(place_result)
 
-    # Phase 17: Concurrent AI Validations (Category & Website)
-    from app.services.analysis.category_validator_agent import validate_business_category
-    from app.services.analysis.website_discovery_agent import discover_official_website
-
-    async def _run_ai_validations(p: dict) -> dict | None:
-        p_name = p["name"]
-        osm_type = p.get("type", "unknown")
-        
-        # 2. Category validation
-        cat_val = await validate_business_category(p_name, query_normalized, osm_type)
-        if not cat_val.get("is_valid", True):
-            logger.info(f"Phase 17 Validation: Rejected {p_name} due to category mismatch. Reason: {cat_val.get('reasoning')}")
-            return None
-            
-        # 3. Website Verification
-        extratags = p.get("extratags") or {}
-        address = p.get("address") or {}
-        website = extratags.get("website") or extratags.get("contact:website") or extratags.get("url") or ""
-        
-        c_extracted = address.get("city") or address.get("town") or address.get("village") or address.get("county") or city
-        co_extracted = address.get("country", country)
-        s_extracted = address.get("state") or state if state else address.get("state")
-        
-        if not website:
-            web_discovery = await discover_official_website(
-                p_name, query_normalized, c_extracted, s_extracted, co_extracted, address=f"{osm_type}"
-            )
-            if web_discovery.get("website"):
-                website = web_discovery["website"]
-                logger.info(f"Phase 17 Website Discovery: Found official website for {p_name}: {website}")
+        # Phase 19: Search Quality Ranking
+        def _calculate_relevance(p: dict) -> float:
+            score = float(p.get("importance", 0.0))
+            p_class = p.get("class", "")
+            if p_class in ["amenity", "shop", "office", "healthcare", "craft", "leisure"]:
+                score += 0.5
+            elif p_class in ["building", "historic"]:
+                score -= 0.3
+            else:
+                score -= 0.5
                 
-        p["_validated_website"] = website
-        p["_city_extracted"] = c_extracted
-        p["_country_extracted"] = co_extracted
-        p["_state_extracted"] = s_extracted
-        return p
-
-    ai_tasks = [_run_ai_validations(p) for p in geographically_valid_places]
-    validated_places = await asyncio.gather(*ai_tasks, return_exceptions=True)
-
-    for place_result in validated_places:
-        if place_result is None:
-            continue
+            b_city = p.get("_city_extracted", "")
+            if city.lower() in b_city.lower():
+                score += 0.3
+                
+            name = p.get("name", "").lower()
+            if query_normalized in name:
+                score += 0.4
+                
+            if p.get("_validated_website"):
+                score += 0.5
+            return score
             
-        if isinstance(place_result, Exception):
-            logger.exception(f"AI validation task failed: {place_result}")
-            failed_imports += 1
-            last_error = place_result
-            continue
+        for p in valid_only:
+            p["_relevance_score"] = _calculate_relevance(p)
+            
+        valid_only.sort(key=lambda x: x["_relevance_score"], reverse=True)
+        
+        logger.info(json.dumps({
+            "event": "phase_19_ranking_complete",
+            "query": query_str,
+            "ranked_places": [{"name": p["name"], "score": p["_relevance_score"], "class": p.get("class")} for p in valid_only]
+        }))
+        
+        final_valid_places = valid_only
+        
+        try:
+            await redis_client.set(validated_cache_key, json.dumps(final_valid_places), ex=86400 * 7)
+        except Exception as e:
+            logger.error(f"Phase 19: Failed to cache validated results: {e}")
 
-        place = place_result
+    for place in final_valid_places:
         try:
             name = place["name"]
             city_slug = region_normalized.replace(' ', '-')

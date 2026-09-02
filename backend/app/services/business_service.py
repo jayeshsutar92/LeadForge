@@ -136,7 +136,13 @@ class BusinessService:
                 if b_name == d_name:
                     score += 50
                 elif b_name in d_name or d_name in b_name:
-                    score += 25
+                    score += 35
+                else:
+                    b_words = set(re.findall(r'\w+', b_name))
+                    d_words = set(re.findall(r'\w+', d_name))
+                    common = b_words.intersection(d_words)
+                    if common and len(common) >= max(len(b_words), len(d_words)) * 0.5:
+                        score += 25
                     
                 if not score:
                     return 0
