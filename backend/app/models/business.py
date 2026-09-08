@@ -47,7 +47,7 @@ class Business(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     instagram_status: Mapped[VerificationStatus] = mapped_column(String(50), nullable=False, default=VerificationStatus.NOT_CHECKED)
     facebook: Mapped[str | None] = mapped_column(String(2048), nullable=True)
     facebook_status: Mapped[VerificationStatus] = mapped_column(String(50), nullable=False, default=VerificationStatus.NOT_CHECKED)
-    evidence_log: Mapped[dict | None] = mapped_column(JSONB, nullable=True, default=dict)
+    evidence_log: Mapped[dict | None] = mapped_column(JSON().with_variant(JSONB, "postgresql"), nullable=True, default=dict)
     evidence_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     cover_image: Mapped[str] = mapped_column(String(2048), nullable=False, default="")
     verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
