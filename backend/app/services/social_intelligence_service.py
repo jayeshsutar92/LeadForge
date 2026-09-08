@@ -28,7 +28,7 @@ class SocialIntelligenceService:
 
         from app.core.redis import get_redis_client
         redis_client = get_redis_client()
-        lock_key = f"lock:social_intelligence:{business.id}"
+        lock_key = f"lock:social_intelligence:{business.slug}"
         
         try:
             async with redis_client.lock(lock_key, timeout=120, blocking_timeout=10):
@@ -65,12 +65,27 @@ class SocialIntelligenceService:
                     current_profiles = data.get("profiles", [])
                     old_profiles = existing.data.get("profiles", [])
                     
-                    has_new_verified = any(p.get("status") == "Verified" for p in current_profiles)
-                    has_old_verified = any(p.get("status") == "Verified" for p in old_profiles)
+                    # Phase 3: Preserve per-platform verified data strictly
+                    current_pipeline = data.get("evidence_pipeline", {})
+                    old_pipeline = existing.data.get("evidence_pipeline", {})
                     
-                    if has_old_verified and not has_new_verified:
-                        logger.warning(f"[Social Intelligence] New analysis found no verified profiles, preserving previous verified profiles for {business.name}.")
-                        data["profiles"] = old_profiles
+                    for plat, old_res in old_pipeline.items():
+                        if old_res.get("status") == "VERIFIED":
+                            new_res = current_pipeline.get(plat, {})
+                            if new_res.get("status") in ["NOT_CHECKED", "UNVERIFIED", "REJECTED_LOW_CONFIDENCE"]:
+                                logger.warning(f"[Social Intelligence] Preserving existing VERIFIED {plat} for {business.name} over {new_res.get('status')}")
+                                current_pipeline[plat] = old_res
+                                
+                                # Make sure it's in the compatible profiles list too
+                                if not any(p.get("platform") == plat for p in current_profiles):
+                                    current_profiles.append({
+                                        "platform": plat,
+                                        "url": old_res.get("url"),
+                                        "status": "Verified"
+                                    })
+                                    
+                    data["profiles"] = current_profiles
+                    if not data.get("recommended_platform") and existing.data.get("recommended_platform"):
                         data["recommended_platform"] = existing.data.get("recommended_platform")
                         
                     # Also preserve old generated messages if the new run failed to generate them

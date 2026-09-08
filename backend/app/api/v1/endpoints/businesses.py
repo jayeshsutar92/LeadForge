@@ -131,22 +131,31 @@ async def discover_businesses(
         else:
             logger.info(f"Phase 16: Cache MISS for boundary {region_normalized}")
             async with httpx.AsyncClient() as client:
-                boundary_url = f"https://nominatim.openstreetmap.org/search?q={quote_plus(region_normalized)}&format=json&limit=1"
+                boundary_url = f"https://nominatim.openstreetmap.org/search?q={quote_plus(region_normalized)}&format=json&limit=5"
                 boundary_res = await client.get(boundary_url, headers={"User-Agent": "LeadForgeBackend/1.0"}, timeout=15.0)
                 boundary_res.raise_for_status()
                 boundary_data = boundary_res.json()
                 if boundary_data:
+                    if len(boundary_data) > 1:
+                        # Check for ambiguity by analyzing top 2 distinct regions
+                        d1 = boundary_data[0].get("display_name", "").split(",")[-1].strip()
+                        d2 = boundary_data[1].get("display_name", "").split(",")[-1].strip()
+                        if d1 and d2 and d1 != d2:
+                            raise HTTPException(status_code=400, detail=f"Ambiguous location '{region_normalized}'. Please provide a more specific state or country.")
+                            
                     bbox = boundary_data[0].get("boundingbox")
                     if bbox and len(bbox) == 4:
                         boundary_bbox = [float(b) for b in bbox]
                         logger.info(f"Resolved boundary for {region_normalized}: {boundary_bbox}")
                         await redis_client.set(boundary_cache_key, json.dumps(boundary_bbox), ex=86400 * 30)
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to resolve or cache boundary for {region_normalized}: {e}")
         
     results = []
     discovery_cache_key = f"cache:discovery:{query_str}"
-    discovery_lock_key = f"lock:discovery:{query_str}:{user.id}"
+    discovery_lock_key = f"lock:discovery:{query_str}"
     
     try:
         # Prevent duplicate Discovery jobs for the same request

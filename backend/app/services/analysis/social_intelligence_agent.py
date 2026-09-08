@@ -82,10 +82,22 @@ async def discover_social_profiles(business_name: str, category: str, city: str,
             results_by_platform[plat_name] = scored_candidates
                 
     except Exception as e:
-        logger.error(f"Social discovery search failed: {e}")
-        # Failure means we stop generation for everything
-        for p in platforms:
-            results_by_platform[p[0]] = []
+        logger.error(f"Social discovery search failed (DDG/network): {e}")
+        # Failure means we stop generation for everything, and force NOT_CHECKED
+        return {
+            "profiles": [],
+            "recommended_platform": None,
+            "messages": [],
+            "evidence_pipeline": {
+                p[0]: {
+                    "url": None,
+                    "confidence": 0,
+                    "status": "NOT_CHECKED",
+                    "reasoning": f"DuckDuckGo search failed: {e}",
+                    "evidence": []
+                } for p in platforms
+            }
+        }
             
     # Phase 2: Batched AI Verification
     ai_decisions = await verify_social_candidates(business_name, category, city, state, country, results_by_platform)

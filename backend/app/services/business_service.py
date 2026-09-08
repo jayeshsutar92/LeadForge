@@ -108,10 +108,29 @@ class BusinessService:
         existing = await self.business_repo.get_by_slug(data.slug, user_id)
         if existing:
             # Update session id if missing
+            # Phase 3: Update existing verified statuses carefully
+            needs_commit = False
             if session_id and session_id not in existing.discovery_session_ids:
                 s_ids = list(existing.discovery_session_ids)
                 s_ids.append(session_id)
                 existing.discovery_session_ids = s_ids
+                needs_commit = True
+                
+            # Safely merge new verified data, protecting existing verified data from downgrades
+            if data.website_status == "VERIFIED" and existing.website_status != "VERIFIED":
+                existing.website_status = "VERIFIED"
+                existing.website = data.website
+                existing.evidence_log = data.evidence_log or {}
+                needs_commit = True
+            elif data.website_status in ["NOT_CHECKED", "UNVERIFIED", "REJECTED_LOW_CONFIDENCE"] and existing.website_status != "VERIFIED":
+                # It's not verified currently, and the new run didn't verify it either, but we can update the log
+                if not existing.website_status or existing.website_status == "NOT_CHECKED":
+                    existing.website_status = data.website_status
+                    if data.evidence_log:
+                        existing.evidence_log = data.evidence_log
+                    needs_commit = True
+                    
+            if needs_commit:
                 await self.session.commit()
             return self._to_card(existing)
             
@@ -119,10 +138,29 @@ class BusinessService:
         if data.website:
             existing_web = await self.business_repo.get_by_website(data.website, user_id)
             if existing_web:
+                # Phase 3: Update existing verified statuses carefully
+                needs_commit = False
                 if session_id and session_id not in existing_web.discovery_session_ids:
                     s_ids = list(existing_web.discovery_session_ids)
                     s_ids.append(session_id)
                     existing_web.discovery_session_ids = s_ids
+                    needs_commit = True
+                    
+                # Safely merge new verified data, protecting existing verified data from downgrades
+                if data.website_status == "VERIFIED" and existing_web.website_status != "VERIFIED":
+                    existing_web.website_status = "VERIFIED"
+                    existing_web.website = data.website
+                    existing_web.evidence_log = data.evidence_log or {}
+                    needs_commit = True
+                elif data.website_status in ["NOT_CHECKED", "UNVERIFIED", "REJECTED_LOW_CONFIDENCE"] and existing_web.website_status != "VERIFIED":
+                    # It's not verified currently, and the new run didn't verify it either, but we can update the log
+                    if not existing_web.website_status or existing_web.website_status == "NOT_CHECKED":
+                        existing_web.website_status = data.website_status
+                        if data.evidence_log:
+                            existing_web.evidence_log = data.evidence_log
+                        needs_commit = True
+                        
+                if needs_commit:
                     await self.session.commit()
                 return self._to_card(existing_web)
             
