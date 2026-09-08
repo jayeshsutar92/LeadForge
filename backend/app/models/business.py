@@ -1,13 +1,20 @@
 from __future__ import annotations
 
 from sqlalchemy import Boolean, Float, Index, Integer, String, Text, ForeignKey, JSON
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
+import enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 import uuid
 
 from app.db.base_class import Base
 from app.models.mixins import TimestampMixin, UUIDPrimaryKeyMixin
 
+
+class VerificationStatus(str, enum.Enum):
+    NOT_CHECKED = "NOT_CHECKED"
+    UNVERIFIED = "UNVERIFIED"
+    VERIFIED = "VERIFIED"
+    REJECTED_LOW_CONFIDENCE = "REJECTED_LOW_CONFIDENCE"
 
 class Business(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "businesses"
@@ -35,8 +42,13 @@ class Business(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     followers: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     engagement_rate: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     website: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+    website_status: Mapped[VerificationStatus] = mapped_column(String(50), nullable=False, default=VerificationStatus.NOT_CHECKED)
     instagram: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+    instagram_status: Mapped[VerificationStatus] = mapped_column(String(50), nullable=False, default=VerificationStatus.NOT_CHECKED)
     facebook: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+    facebook_status: Mapped[VerificationStatus] = mapped_column(String(50), nullable=False, default=VerificationStatus.NOT_CHECKED)
+    evidence_log: Mapped[dict | None] = mapped_column(JSONB, nullable=True, default=dict)
+    evidence_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     cover_image: Mapped[str] = mapped_column(String(2048), nullable=False, default="")
     verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 

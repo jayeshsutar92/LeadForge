@@ -16,7 +16,12 @@ class BusinessCard(BaseModel):
     bio: str
     followers: int
     engagement_rate: float
-    website: Optional[str]
+    website: Optional[str] = None
+    website_status: Optional[str] = None
+    instagram_status: Optional[str] = None
+    facebook_status: Optional[str] = None
+    evidence_log: Optional[dict] = None
+    evidence_hash: Optional[str] = None
     instagram: Optional[str]
     facebook: Optional[str]
     cover_image: str

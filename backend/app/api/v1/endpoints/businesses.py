@@ -295,6 +295,8 @@ async def discover_businesses(
             co_extracted = address.get("country", country)
             s_extracted = address.get("state") or state if state else address.get("state")
             
+            p["_website_status"] = "NOT_CHECKED"
+            p["_evidence_log"] = {}
             if not website:
                 web_discovery = await discover_official_website(
                     p_name, query_normalized, c_extracted, s_extracted, co_extracted, address=f"{osm_type}"
@@ -302,7 +304,11 @@ async def discover_businesses(
                 if web_discovery.get("website"):
                     website = web_discovery["website"]
                     logger.info(f"Phase 17 Website Discovery: Found official website for {p_name}: {website}")
-                    
+                p["_website_status"] = web_discovery.get("status", "NOT_CHECKED")
+                p["_evidence_log"] = {"website": web_discovery.get("evidence", [])}
+            else:
+                p["_website_status"] = "VERIFIED" # Provided directly by OSM
+
             p["_validated_website"] = website
             p["_city_extracted"] = c_extracted
             p["_country_extracted"] = co_extracted
@@ -409,6 +415,8 @@ async def discover_businesses(
                 state=state_extracted,
                 country=country_extracted,
                 website=website,
+                website_status=place.get("_website_status"),
+                evidence_log=place.get("_evidence_log", {}),
                 bio=f"Discovered via OpenStreetMap. Category: {place.get('type', 'unknown')}"
             )
             

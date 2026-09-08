@@ -1,245 +1,114 @@
-import json
+﻿import json
 import logging
+import hashlib
+import re
 from duckduckgo_search import DDGS
 
-from app.agents.providers.factory import ProviderFactory
-from app.core.config import get_settings
+from app.services.analysis.deterministic_scoring import score_social_candidate
+from app.services.analysis.cache import get_candidate_cache, set_candidate_cache
 
 logger = logging.getLogger(__name__)
 
-import re
-import httpx
-import asyncio
-
-async def fetch_profile_metadata(url: str) -> dict:
-    metadata = {}
-    try:
-        async with httpx.AsyncClient(timeout=3.0, follow_redirects=True, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"}) as client:
-            res = await client.get(url)
-            if res.status_code == 200:
-                text = res.text
-                og_title = re.search(r'<meta\s+(?:property|name)=["\']og:title["\']\s+content=["\']([^"\']+)["\']', text, re.IGNORECASE)
-                if og_title: metadata['display_name'] = og_title.group(1)
-                else:
-                    title = re.search(r'<title>([^<]+)</title>', text, re.IGNORECASE)
-                    if title: metadata['display_name'] = title.group(1)
-                og_desc = re.search(r'<meta\s+(?:property|name)=["\']og:description["\']\s+content=["\']([^"\']+)["\']', text, re.IGNORECASE)
-                if og_desc: metadata['bio'] = og_desc.group(1)
-                else:
-                    meta_desc = re.search(r'<meta\s+(?:property|name)=["\']description["\']\s+content=["\']([^"\']+)["\']', text, re.IGNORECASE)
-                    if meta_desc: metadata['bio'] = meta_desc.group(1)
-    except Exception:
-        pass
-    return metadata
-
 async def discover_social_profiles(business_name: str, category: str, city: str, state: str, country: str, address: str = "", phone: str = "", website: str = "") -> dict:
-    """
-    Search DuckDuckGo for public social profiles and use the LLM to filter and extract them.
-    Returns a dictionary of profiles, scores, and recommended channel.
-    """
+    location_str = f"{city} {state}" if state else city
+    
+    identity_str = f"{business_name.lower()}|{location_str.lower()}"
+    business_hash = hashlib.sha256(identity_str.encode()).hexdigest()
+    
     platforms = [
         ("instagram", "site:instagram.com"),
         ("facebook", "site:facebook.com"),
         ("linkedin", "site:linkedin.com"),
-        ("x", "site:x.com OR site:twitter.com"),
-        ("google", "site:google.com/search?q="),
+        ("x", "site:x.com OR site:twitter.com")
     ]
     
-    # We will gather search snippets for the LLM
-    search_results = []
+    base_slug = re.sub(r'[^a-zA-Z0-9]', '', business_name.lower())
+    slug_variants = [
+        base_slug,
+        f"{base_slug}{city.lower().replace(' ', '')}",
+        business_name.lower().replace(' ', '_')
+    ]
+    
+    results_by_platform = {}
+    old_profiles_compat = []
     
     try:
         ddgs = DDGS()
-        for platform_name, search_prefix in platforms:
-            location_str = f"{city} {state}" if state else city
-            query = f"{search_prefix} {business_name} {location_str}"
-            # get up to 3 results per platform
-            results = ddgs.text(query, max_results=3)
-            if results:
-                for r in results:
-                    search_results.append({
-                        "platform": platform_name,
-                        "title": r.get("title", ""),
-                        "body": r.get("body", ""),
-                        "href": r.get("href", "")
-                    })
-    except Exception as e:
-        logger.error(f"DuckDuckGo search failed: {e}")
-        # Even if search fails partially, we continue with what we have
-        pass
+        for plat_name, plat_query in platforms:
+            cached = await get_candidate_cache(plat_name, business_hash)
+            if cached is not None:
+                raw_candidates = cached
+            else:
+                raw_candidates = []
+                queries = [
+                    f"{plat_query} \"{business_name}\" {location_str}"
+                ]
+                for slug in set(slug_variants):
+                    queries.append(f"{plat_query} {slug}")
+                    
+                for query in queries:
+                    res = ddgs.text(query, max_results=3)
+                    if res:
+                        for r in res:
+                            raw_candidates.append({
+                                "title": r.get("title", ""),
+                                "body": r.get("body", ""),
+                                "url": r.get("href", "")
+                            })
+                
+                await set_candidate_cache(plat_name, business_hash, raw_candidates)
+                
+            seen_urls = set()
+            unique_candidates = []
+            for c in raw_candidates:
+                url = c.get("url", "").lower()
+                if url and url not in seen_urls:
+                    seen_urls.add(url)
+                    unique_candidates.append(c)
 
-    if not search_results:
-        return {
-            "profiles": [],
-            "recommended_platform": None,
-            "messages": {}
-        }
-        
-    prompt = f"""
-You are an expert Social Intelligence agent. Your task is to identify the official social media profiles for a business based on search results.
-
-Business Context:
-- Name: {business_name}
-- Category: {category}
-- Location: {city}{f', {state}' if state else ''}, {country}
-- Address/Bio Details: {address}
-
-Search Results:
-{json.dumps(search_results, indent=2)}
-
-Task:
-1. Review the search results and identify the OFFICIAL profiles for this exact business.
-2. Prioritize candidate profiles whose public information matches the verified business location. Reject candidate profiles belonging to another city, state, country, or unrelated business with a similar name. Never recommend generic city pages, tourism pages, community pages, influencers, or unrelated businesses.
-3. If you cannot confidently identify an official profile, you MUST STILL return the BEST candidate profile(s) you found (that match the geographic location). NEVER return an empty profiles list if you have candidate URLs.
-4. For each profile, assign a confidence score (0-100). If it's a candidate but you aren't certain, assign a lower confidence score (e.g., under 80).
-5. Determine the 'recommended_platform' for outreach based on which profile seems most active or professional (e.g., if Instagram is 95 confidence and Facebook is 80, recommend Instagram).
-6. Generate a short, personalized outreach message for EACH discovered platform. Do NOT mention that you searched for them, just say you came across their profile.
-7. Output the geographic context (city, state, country) you extracted or inferred from the profile for later verification.
-
-Format your output strictly as a JSON object adhering to this schema. DO NOT include markdown formatting or extra text.
-"""
-
-    schema = {
-        "type": "object",
-        "properties": {
-            "profiles": {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "platform": {"type": "string", "enum": ["instagram", "facebook", "linkedin", "x", "google"]},
-                        "url": {"type": "string"},
-                        "username": {"type": "string"},
-                        "confidence": {"type": "number"},
-                        "reasoning": {"type": "string"},
-                        "city": {"type": "string"},
-                        "state": {"type": "string"},
-                        "country": {"type": "string"}
-                    },
-                    "required": ["platform", "url", "username", "confidence", "reasoning", "city", "country"]
+            scored_candidates = []
+            for c in unique_candidates:
+                score = score_social_candidate(c, business_name, city, plat_name)
+                if score > 0:
+                    c_copy = c.copy()
+                    c_copy["score"] = score
+                    scored_candidates.append(c_copy)
+                    
+            scored_candidates.sort(key=lambda x: x["score"], reverse=True)
+            
+            if not scored_candidates or scored_candidates[0]["score"] < 40:
+                results_by_platform[plat_name] = {
+                    "url": None,
+                    "confidence": 0,
+                    "status": "UNVERIFIED",
+                    "reasoning": "No strong candidate",
+                    "evidence": scored_candidates
                 }
-            },
-            "recommended_platform": {
-                "type": ["string", "null"]
-            },
-            "messages": {
-                "type": "object",
-                "description": "A dictionary where the key is the platform name, and the value is the generated outreach message."
-            }
-        },
-        "required": ["profiles", "recommended_platform", "messages"]
+            else:
+                best = scored_candidates[0]
+                results_by_platform[plat_name] = {
+                    "url": best["url"],
+                    "confidence": best["score"],
+                    "status": "UNVERIFIED", # Pending AI in phase 2
+                    "reasoning": "Deterministic scoring complete, pending AI",
+                    "evidence": scored_candidates
+                }
+                
+                old_profiles_compat.append({
+                    "platform": plat_name,
+                    "url": best["url"],
+                    "status": "UNVERIFIED" # Not VERIFIED to prevent false positives
+                })
+                
+    except Exception as e:
+        logger.error(f"Social discovery search failed: {e}")
+        for p in platforms:
+            results_by_platform[p[0]] = {"url": None, "confidence": 0, "status": "NOT_CHECKED", "reasoning": "Search failed", "evidence": []}
+
+    return {
+        "profiles": old_profiles_compat,
+        "recommended_platform": old_profiles_compat[0]["platform"] if old_profiles_compat else None,
+        "messages": [],
+        "evidence_pipeline": results_by_platform
     }
-    
-    settings = get_settings()
-    config = settings.model_dump()
-    
-    try:
-        provider = ProviderFactory.get_provider(settings.ai_provider, config=config)
-    except Exception as e:
-        logger.error(f"Failed to load AI provider: {e}")
-        return {
-            "profiles": [],
-            "recommended_platform": None,
-            "messages": {}
-        }
-    
-    try:
-        result = await provider.generate_json(prompt=prompt, schema=schema)
-        
-        # Phase 11: Deterministic Profile Verification
-        if result and "profiles" in result:
-            verified_profiles = []
-            highest_score = 0
-            best_platform = None
-            
-            # Fetch metadata concurrently
-            async def enrich_profile(p: dict):
-                meta = await fetch_profile_metadata(p.get("url", ""))
-                p["display_name"] = meta.get("display_name", "")
-                p["bio"] = meta.get("bio", "")
-                return p
-                
-            enriched = await asyncio.gather(*(enrich_profile(p) for p in result["profiles"]))
-            
-            for p in enriched:
-                score = 0
-                evidence = []
-                content = f"{p.get('title','')} {p.get('body','')} {p.get('display_name','')} {p.get('bio','')} {p.get('reasoning','')} {p.get('username', '')}".lower()
-                
-                # Disqualifiers
-                disqualifiers = ["influencer", "blogger", "tourist guide", "visit ", "explore ", "official tourism", "tourism board", "city of", "municipality"]
-                if any(dq in content for dq in disqualifiers):
-                    p["confidence"] = 0
-                    p["evidence"] = ["Disqualified (Tourist/Influencer profile)"]
-                    p["status"] = "Rejected"
-                    verified_profiles.append(p)
-                    continue
 
-                business_name_cleaned = re.sub(r'[^a-z0-9]', '', business_name.lower())
-                if p.get("username") and (p["username"].lower() == business_name_cleaned or p["username"].lower() in business_name_cleaned):
-                    score += 35
-                    evidence.append("Username Match")
-
-                if business_name and business_name.lower() in content:
-                    score += 30
-                    evidence.append("Name Match")
-                elif business_name and any(word.lower() in content for word in business_name.split() if len(word) > 3):
-                    score += 15
-                    evidence.append("Partial Name Match")
-                    
-                if p.get("display_name") and business_name.lower() in p.get("display_name").lower():
-                    score += 20
-                    evidence.append("Display Name Match")
-                    
-                if city and city.lower() in content:
-                    score += 20
-                    evidence.append("City Match")
-                    
-                if country and country.lower() not in ["unknown", ""] and country.lower() in content:
-                    score += 10
-                    evidence.append("Country Match")
-                    
-                if category and category.lower() in content:
-                    score += 15
-                    evidence.append("Category Match")
-                    
-                if phone and re.sub(r'[^0-9]', '', phone) in re.sub(r'[^0-9]', '', content):
-                    score += 25
-                    evidence.append("Phone Match")
-                    
-                if address and address.split(',')[0].lower() in content:
-                    score += 20
-                    evidence.append("Address Match")
-                    
-                if website and website.replace("https://", "").replace("http://", "").replace("www.", "").strip("/") in content:
-                    score += 25
-                    evidence.append("Website Match")
-                    
-                score = min(score, 100)
-                p["confidence"] = score
-                p["evidence"] = evidence
-                
-                if score >= 65:
-                    p["status"] = "Verified"
-                    if score > highest_score:
-                        highest_score = score
-                        best_platform = p.get("platform")
-                elif score >= 35:
-                    p["status"] = "Possible Match"
-                else:
-                    p["status"] = "Rejected"
-                    
-                verified_profiles.append(p)
-                
-            # If no profile satisfies the threshold, return No Verified Profile
-            result["profiles"] = verified_profiles
-            result["recommended_platform"] = best_platform
-            
-        return result
-    except Exception as e:
-        logger.error(f"Failed to generate social intelligence from LLM: {e}")
-        return {
-            "profiles": [],
-            "recommended_platform": None,
-            "messages": {}
-        }
