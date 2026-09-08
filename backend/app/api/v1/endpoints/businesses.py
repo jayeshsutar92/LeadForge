@@ -305,7 +305,13 @@ async def discover_businesses(
                     website = web_discovery["website"]
                     logger.info(f"Phase 17 Website Discovery: Found official website for {p_name}: {website}")
                 p["_website_status"] = web_discovery.get("status", "NOT_CHECKED")
-                p["_evidence_log"] = {"website": web_discovery.get("evidence", [])}
+                p["_evidence_log"] = {
+                    "website": {
+                        "candidates": web_discovery.get("evidence", []),
+                        "reasoning": web_discovery.get("reasoning", ""),
+                        "confidence": web_discovery.get("confidence", 0)
+                    }
+                }
             else:
                 p["_website_status"] = "VERIFIED" # Provided directly by OSM
 
