@@ -11,7 +11,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = '6a2b4c5d6e7f'
-down_revision = 'e0d66345c7a3'
+down_revision = '5c4f6g7h8i9j'
 
 def upgrade() -> None:
     # Add new columns with server_default so existing rows don't break
